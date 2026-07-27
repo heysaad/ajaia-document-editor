@@ -2,7 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { DocumentSaveClientPort } from "@/features/document-editing/client/document-save-client";
+import type { IDocumentSaveClient } from "@/features/document-editing/client/IDocumentSaveClient";
 import { useDocumentAutosave } from "@/features/document-editing/client/use-document-autosave";
 import type { DocumentDetail } from "@/features/documents/models";
 
@@ -32,8 +32,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-class StubDocumentSaveClient implements DocumentSaveClientPort {
-  constructor(readonly save: DocumentSaveClientPort["save"]) {}
+class StubDocumentSaveClient implements IDocumentSaveClient {
+  constructor(readonly save: IDocumentSaveClient["save"]) {}
 }
 
 describe("document autosave", () => {
@@ -83,7 +83,7 @@ describe("document autosave", () => {
       content: [{ type: "paragraph", content: [{ type: "text", text: "retry me" }] }],
     } satisfies JSONContent;
     const save = vi
-      .fn<DocumentSaveClientPort["save"]>()
+      .fn<IDocumentSaveClient["save"]>()
       .mockRejectedValueOnce(new Error("Network unavailable"))
       .mockResolvedValueOnce(savedDocument(edited));
     const { result } = renderHook(() =>

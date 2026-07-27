@@ -1,7 +1,7 @@
 import { AlertCircle, CheckCircle2, LoaderCircle, ShieldAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import type { SaveStatus } from "@/features/document-editing/client/save-state";
+import type { SaveStatus } from "@/features/document-editing/models";
 
 type SaveStatusIndicatorProps = {
   state: SaveStatus;

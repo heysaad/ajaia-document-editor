@@ -1,18 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
 
+import type { IDocumentSaveClient } from "@/features/document-editing/client/IDocumentSaveClient";
 import type { DocumentDetail } from "@/features/documents/models";
 import { fetchJson } from "@/lib/api-client";
 
-export interface DocumentSaveClientPort {
-  save(
-    documentId: string,
-    content: JSONContent,
-    expectedVersion: number,
-    signal: AbortSignal,
-  ): Promise<DocumentDetail>;
-}
-
-export class FetchDocumentSaveClient implements DocumentSaveClientPort {
+export class FetchDocumentSaveClient implements IDocumentSaveClient {
   save(
     documentId: string,
     content: JSONContent,
@@ -28,5 +20,5 @@ export class FetchDocumentSaveClient implements DocumentSaveClientPort {
   }
 }
 
-export const fetchDocumentSaveClient: DocumentSaveClientPort =
+export const fetchDocumentSaveClient: IDocumentSaveClient =
   new FetchDocumentSaveClient();

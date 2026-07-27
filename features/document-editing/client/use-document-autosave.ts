@@ -6,7 +6,7 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { DocumentDetail } from "@/features/documents/models";
 import { ApiClientError } from "@/lib/api-client";
 
-import type { DocumentSaveClientPort } from "./document-save-client";
+import type { IDocumentSaveClient } from "./IDocumentSaveClient";
 import {
   createInitialSaveState,
   saveStateReducer,
@@ -19,7 +19,7 @@ type UseDocumentAutosaveInput = {
   initialContent: JSONContent;
   initialVersion: number;
   initialSavedAt: string;
-  client: DocumentSaveClientPort;
+  client: IDocumentSaveClient;
 };
 
 export function useDocumentAutosave({

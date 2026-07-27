@@ -1,7 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { FetchDocumentSaveClient } from "@/features/document-editing/client/document-save-client";
+import { FetchDocumentSaveClient } from "@/features/document-editing/client/FetchDocumentSaveClient";
 
 afterEach(() => {
   vi.unstubAllGlobals();

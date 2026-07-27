@@ -19,8 +19,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   fetchDocumentSaveClient,
-  type DocumentSaveClientPort,
-} from "@/features/document-editing/client/document-save-client";
+} from "@/features/document-editing/client/FetchDocumentSaveClient";
+import type { IDocumentSaveClient } from "@/features/document-editing/client/IDocumentSaveClient";
 import { useDocumentAutosave } from "@/features/document-editing/client/use-document-autosave";
 import type { DocumentDetail } from "@/features/documents/models";
 import { fetchJson } from "@/lib/api-client";
@@ -32,7 +32,7 @@ import { FormattingToolbar } from "./formatting-toolbar";
 
 type DocumentEditorScreenProps = {
   document: DocumentDetail;
-  saveClient?: DocumentSaveClientPort;
+  saveClient?: IDocumentSaveClient;
 };
 
 const TITLE_SAVE_DELAY_MS = 800;

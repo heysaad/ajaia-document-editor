@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { SaveStatus } from "@/features/document-editing/client/save-state";
+import type { SaveStatus } from "@/features/document-editing/models";
 
 import { DocumentTitleField } from "./document-title-field";
 import { SaveStatusIndicator } from "./save-status-indicator";
