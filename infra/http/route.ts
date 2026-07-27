@@ -4,6 +4,9 @@ import { z, ZodError } from "zod";
 import { type ApiErrorShape } from "@/infra/http/api-errors";
 import { AppError, ValidationError } from "@/lib/application-errors";
 
+type RouteHandlerArgs = [Request] | [Request, unknown] | [];
+type RouteHandlerResult = Response | NextResponse | Promise<Response | NextResponse>;
+
 export function toErrorResponse(error: unknown): NextResponse<ApiErrorShape> {
   if (error instanceof AppError) {
     return NextResponse.json(
@@ -55,4 +58,16 @@ export async function parseJsonBody<TSchema extends z.ZodType>(
   }
 
   return schema.parse(json);
+}
+
+export function handleRoute<TArgs extends RouteHandlerArgs>(
+  handler: (...args: TArgs) => RouteHandlerResult,
+) {
+  return async (...args: TArgs): Promise<Response | NextResponse> => {
+    try {
+      return await handler(...args);
+    } catch (error) {
+      return toErrorResponse(error);
+    }
+  };
 }
