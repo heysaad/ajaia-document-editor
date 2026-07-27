@@ -48,7 +48,7 @@ export function DocumentCard({
   const showDeleteConfirmation = pendingDeleteId === document.id;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden" data-document-id={document.id}>
       <CardContent className="p-0">
         <div className="flex flex-col gap-5 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
