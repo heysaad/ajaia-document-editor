@@ -159,27 +159,34 @@ export function OwnedDocumentsTable({
                             <MoreHorizontal aria-hidden="true" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-40 rounded-xl p-1">
-                          <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
+                        <DropdownMenuContent
+                          align="end"
+                          sideOffset={8}
+                          className="z-50 min-w-40 rounded-xl border border-border bg-card p-1 text-card-foreground shadow-lg outline-none"
+                        >
+                          <DropdownMenuItem
+                            asChild
+                            className="flex cursor-pointer items-center rounded-lg px-2 py-2 text-sm outline-none focus:bg-accent"
+                          >
                             <Link href={`/documents/${document.id}`}>Open</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="cursor-pointer rounded-lg"
+                            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm outline-none focus:bg-accent"
                             onSelect={() => onRenameStart(document)}
                           >
                             <PencilLine aria-hidden="true" />
                             Rename
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="cursor-pointer rounded-lg"
+                            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm outline-none focus:bg-accent"
                             onSelect={() => onShareRequest(document)}
                           >
                             <Share2 aria-hidden="true" />
                             Share
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
+                          <DropdownMenuSeparator className="my-1 h-px bg-border" />
                           <DropdownMenuItem
-                            className="cursor-pointer rounded-lg text-destructive focus:bg-destructive/10 focus:text-destructive"
+                            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-destructive outline-none focus:bg-destructive/10 focus:text-destructive"
                             disabled={isDeleting}
                             onSelect={() => setPendingDeleteDocument(document)}
                           >
