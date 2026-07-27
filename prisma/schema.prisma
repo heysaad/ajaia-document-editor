@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @db.Uuid
+  name      String     @db.VarChar(120)
+  email     String     @unique @db.VarChar(320)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  documents Document[]
+}
+
+model Document {
+  id          String   @id @db.Uuid
+  ownerId     String   @db.Uuid
+  title       String   @db.VarChar(120)
+  contentJson Json
+  contentText String   @db.Text
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, updatedAt(sort: Desc), id(sort: Desc)])
+}

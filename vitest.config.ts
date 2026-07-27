@@ -1,0 +1,13 @@
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./test/setup-vitest.ts"],
+    include: ["test/**/*.test.ts", "test/**/*.test.tsx"],
+    coverage: {
+      reporter: ["text", "html"],
+    },
+  },
+});
