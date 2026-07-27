@@ -14,11 +14,13 @@ vi.mock("next/headers", () => ({
   headers: vi.fn().mockResolvedValue(new Headers({ cookie: "session=test" })),
 }));
 
-vi.mock("@/features/auth/server/auth.server", () => ({
-  auth: {
-    api: {
-      getSession,
-    },
+vi.mock("@/infra/di/container", () => ({
+  appContainer: {
+    resolve: () => ({
+      api: {
+        getSession,
+      },
+    }),
   },
 }));
 
