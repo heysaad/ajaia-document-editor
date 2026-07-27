@@ -1,8 +1,4 @@
-export type DemoUser = {
-  id: string;
-  name: string;
-  email: string;
-};
+import type { DemoUser } from "@/features/auth/models";
 
 export const DEMO_USERS: DemoUser[] = [
   {

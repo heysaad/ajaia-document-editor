@@ -1,14 +1,10 @@
 import "server-only";
 
 import { env } from "@/config/env";
-import {
-  NextCookieIdentitySessionStore,
-  PrismaIdentityUserLookup,
-} from "@/features/auth/server/identity-adapters";
-import {
-  IdentityService,
-  type IdentityServicePort,
-} from "@/features/auth/server/identity-provider";
+import { IdentityService } from "@/features/auth/server/IdentityService";
+import type { IIdentityService } from "@/features/auth/server/IIdentityService";
+import { NextCookieIdentitySessionStore } from "@/features/auth/server/NextCookieIdentitySessionStore";
+import { PrismaIdentityUserLookup } from "@/features/auth/server/PrismaIdentityUserLookup";
 import { prisma } from "@/infra/db/prisma";
 
 const sessionStore = new NextCookieIdentitySessionStore(
@@ -16,7 +12,7 @@ const sessionStore = new NextCookieIdentitySessionStore(
 );
 const userLookup = new PrismaIdentityUserLookup(prisma);
 
-export const identityService: IdentityServicePort = new IdentityService(
+export const identityService: IIdentityService = new IdentityService(
   sessionStore,
   userLookup,
 );

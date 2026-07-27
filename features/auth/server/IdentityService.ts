@@ -1,23 +1,13 @@
-import type { DemoUser } from "@/features/auth/server/demo-users";
+import type { DemoUser } from "@/features/auth/models";
+import type { IIdentityService } from "@/features/auth/server/IIdentityService";
+import type { IIdentitySessionStore } from "@/features/auth/server/IIdentitySessionStore";
+import type { IIdentityUserLookup } from "@/features/auth/server/IIdentityUserLookup";
 import { UnauthorizedError } from "@/lib/application-errors";
 
-export interface IdentitySessionStorePort {
-  getSelectedUserId(): Promise<string | null>;
-}
-
-export interface IdentityUserLookupPort {
-  findById(id: string): Promise<DemoUser | null>;
-}
-
-export interface IdentityServicePort {
-  resolveViewerIdentity(): Promise<DemoUser>;
-  resolveOptionalViewerIdentity(): Promise<DemoUser | null>;
-}
-
-export class IdentityService implements IdentityServicePort {
+export class IdentityService implements IIdentityService {
   constructor(
-    private readonly sessionStore: IdentitySessionStorePort,
-    private readonly userLookup: IdentityUserLookupPort,
+    private readonly sessionStore: IIdentitySessionStore,
+    private readonly userLookup: IIdentityUserLookup,
   ) {}
 
   async resolveViewerIdentity(): Promise<DemoUser> {

@@ -1,6 +1,7 @@
 import "server-only";
 
-import { DEMO_USERS, type DemoUser } from "@/features/auth/server/demo-users";
+import type { DemoUser } from "@/features/auth/models";
+import { DEMO_USERS } from "@/features/auth/server/demo-users";
 import { identityService } from "@/features/auth/server/identity-service.server";
 import { ValidationError } from "@/lib/application-errors";
 

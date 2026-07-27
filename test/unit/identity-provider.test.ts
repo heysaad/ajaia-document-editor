@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  IdentityService,
-  type IdentitySessionStorePort,
-  type IdentityUserLookupPort,
-} from "@/features/auth/server/identity-provider";
+import { IdentityService } from "@/features/auth/server/IdentityService";
+import type { IIdentitySessionStore } from "@/features/auth/server/IIdentitySessionStore";
+import type { IIdentityUserLookup } from "@/features/auth/server/IIdentityUserLookup";
 import { UnauthorizedError } from "@/lib/application-errors";
 
 const user = {
@@ -13,7 +11,7 @@ const user = {
   email: "maya@example.com",
 };
 
-class StubIdentitySessionStore implements IdentitySessionStorePort {
+class StubIdentitySessionStore implements IIdentitySessionStore {
   constructor(private readonly userId: string | null) {}
 
   async getSelectedUserId() {
@@ -21,7 +19,7 @@ class StubIdentitySessionStore implements IdentitySessionStorePort {
   }
 }
 
-class StubIdentityUserLookup implements IdentityUserLookupPort {
+class StubIdentityUserLookup implements IIdentityUserLookup {
   constructor(private readonly found = true) {}
 
   async findById() {
