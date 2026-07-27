@@ -2,8 +2,11 @@ import { notFound, redirect } from "next/navigation";
 
 import { getOptionalSessionUser } from "@/features/auth/server/auth-session";
 import { DocumentEditorScreen } from "@/features/document-editing/components/document-editor-screen";
-import { documentService } from "@/features/documents/server/document-service.server";
+import { appContainer } from "@/infra/di/container";
+import { DI_TOKENS } from "@/infra/di/tokens";
 import { AppError } from "@/lib/application-errors";
+
+const documentService = appContainer.resolve(DI_TOKENS.DocumentService);
 
 type DocumentPageProps = {
   params: Promise<{ documentId: string }>;

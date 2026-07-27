@@ -3,8 +3,11 @@ import "server-only";
 import { headers } from "next/headers";
 
 import type { SessionUser } from "@/features/auth/models";
-import { auth } from "@/features/auth/server/auth.server";
+import { appContainer } from "@/infra/di/container";
+import { DI_TOKENS } from "@/infra/di/tokens";
 import { UnauthorizedError } from "@/lib/application-errors";
+
+const auth = appContainer.resolve(DI_TOKENS.Auth);
 
 export async function resolveSessionUser(): Promise<SessionUser> {
   const user = await getOptionalSessionUser();

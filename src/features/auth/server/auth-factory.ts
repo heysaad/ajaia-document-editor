@@ -30,3 +30,5 @@ export function createAuth({
     },
   });
 }
+
+export type AuthInstance = ReturnType<typeof createAuth>;

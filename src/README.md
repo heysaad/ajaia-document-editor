@@ -51,10 +51,12 @@ Prepare the database and start the application:
 
 ```bash
 npm run db:generate
-npm run db:migrate
 npm run db:seed
 npm run dev
 ```
+
+`npm run dev` and `npm run start` automatically run `prisma migrate deploy`
+first, so pending migrations are applied at startup.
 
 Open [http://localhost:3000](http://localhost:3000) and sign in or create an
 account. The seed command is idempotent and can be run repeatedly. It creates:

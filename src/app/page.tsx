@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { getOptionalSessionUser } from "@/features/auth/server/auth-session";
-import { documentService } from "@/features/documents/server/document-service.server";
+import { appContainer } from "@/infra/di/container";
+import { DI_TOKENS } from "@/infra/di/tokens";
 import { DocumentDashboard } from "@/features/documents/components/document-dashboard";
+
+const documentService = appContainer.resolve(DI_TOKENS.DocumentService);
 
 export default async function Home() {
   const viewer = await getOptionalSessionUser();

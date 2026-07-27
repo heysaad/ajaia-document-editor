@@ -5,8 +5,11 @@ import {
   documentIdParamSchema,
   renameDocumentSchema,
 } from "@/features/documents/server/document-schemas";
-import { documentService } from "@/features/documents/server/document-service.server";
+import { appContainer } from "@/infra/di/container";
+import { DI_TOKENS } from "@/infra/di/tokens";
 import { handleRoute, parseJsonBody } from "@/infra/http/route";
+
+const documentService = appContainer.resolve(DI_TOKENS.DocumentService);
 
 export const runtime = "nodejs";
 type DocumentRouteContext = {
