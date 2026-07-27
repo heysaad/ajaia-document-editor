@@ -19,17 +19,12 @@ type AppContainer = {
 
 type GlobalDiState = {
   appContainer?: AppContainer;
-  appContainerConfigured?: boolean;
 };
 
 const globalForDi = globalThis as GlobalDiState;
 const appContainer = globalForDi.appContainer ?? (container as AppContainer);
 
 function registerCoreDependencies() {
-  if (globalForDi.appContainerConfigured) {
-    return;
-  }
-
   if (!container.isRegistered(DI_TOKENS.PrismaClient, true)) {
     container.register(DI_TOKENS.PrismaClient, {
       useValue: prisma,
@@ -70,7 +65,6 @@ function registerCoreDependencies() {
     });
   }
 
-  globalForDi.appContainerConfigured = true;
 }
 
 registerCoreDependencies();
