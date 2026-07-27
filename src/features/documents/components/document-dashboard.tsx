@@ -7,13 +7,7 @@ import { useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DocumentImportDialog } from "@/features/document-import/components/document-import-dialog";
 import { DocumentShareDialog } from "@/features/document-sharing/components/document-share-dialog";
 import { fetchJson } from "@/lib/api-client";
@@ -128,13 +122,7 @@ export function DocumentDashboard({
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
           <Badge variant="outline">Workspace</Badge>
-          <div className="space-y-1">
-            <h1 className="text-3xl font-semibold text-foreground">Documents</h1>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Create a draft or import a supported file, then continue editing
-              from a simple document list.
-            </p>
-          </div>
+          <h1 className="text-3xl font-semibold text-foreground">Documents</h1>
         </div>
         <div className="flex flex-wrap gap-2 lg:justify-end">
           <Button
@@ -165,23 +153,13 @@ export function DocumentDashboard({
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground">
-              Owned by me
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Open, rename, delete, or continue editing from one table.
-            </p>
-          </div>
+          <h2 className="text-2xl font-semibold text-foreground">Owned by me</h2>
           <Badge variant="outline">{ownedDocuments.length} documents</Badge>
         </div>
 
         <Card>
           <CardHeader className="border-b border-border/70 pb-4">
             <CardTitle className="text-base">Document library</CardTitle>
-            <CardDescription>
-              Supported imports: .txt and .md, up to 1 MiB.
-            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {ownedDocuments.length === 0 ? (
@@ -223,25 +201,13 @@ export function DocumentDashboard({
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground">
-              Shared with me
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Shared documents stay visibly distinct and keep owner identity in
-              view.
-            </p>
-          </div>
+          <h2 className="text-2xl font-semibold text-foreground">Shared with me</h2>
           <Badge variant="outline">{sharedDocuments.length} documents</Badge>
         </div>
 
         <Card>
           <CardHeader className="border-b border-border/70 pb-4">
             <CardTitle className="text-base">Shared document library</CardTitle>
-            <CardDescription>
-              Shared editors can open and edit content, but owner-only actions
-              stay hidden here.
-            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {sharedDocuments.length === 0 ? (
@@ -251,10 +217,6 @@ export function DocumentDashboard({
                     <CardTitle className="text-base">
                       No shared documents yet
                     </CardTitle>
-                    <CardDescription>
-                      Documents shared with you will appear here with the owner
-                      clearly identified.
-                    </CardDescription>
                   </CardHeader>
                 </Card>
               </div>
