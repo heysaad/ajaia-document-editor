@@ -44,6 +44,15 @@ export function SaveStatusIndicator({
     );
   }
 
+  if (state === "revoked") {
+    return (
+      <Badge variant="destructive">
+        <ShieldAlert aria-hidden="true" />
+        Access revoked
+      </Badge>
+    );
+  }
+
   if (state === "saved" && lastSavedAt) {
     return (
       <Badge variant="success">

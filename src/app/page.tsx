@@ -14,8 +14,8 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const documents = await documentService.listOwnedDocuments({
-    ownerId: viewer.id,
+  const documents = await documentService.listDashboardDocuments({
+    viewerId: viewer.id,
     limit: 12,
   });
 
@@ -24,7 +24,7 @@ export default async function Home() {
       <DocumentDashboard
         key={viewer.id}
         viewer={viewer}
-        initialDocuments={documents.items}
+        initialData={documents}
       />
     </AuthenticatedShell>
   );

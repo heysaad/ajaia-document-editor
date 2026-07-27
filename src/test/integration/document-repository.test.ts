@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 const repository = new PrismaDocumentRepository(prisma);
 const ownerId = "20bdfe9a-3614-481b-8610-4b07c5f2192d";
 const otherOwnerId = "8f81f1bf-d02e-4c9d-a35e-a2e758e49465";
+const sharedEditorId = "7a2f17ca-cc1e-42b8-ad9a-3344d9dc4352";
 const emptyContent: JSONContent = {
   type: "doc",
   content: [{ type: "paragraph" }],
@@ -23,6 +24,11 @@ describe("PrismaDocumentRepository", () => {
           name: "Other Owner",
           email: "repo-other@example.com",
         },
+        {
+          id: sharedEditorId,
+          name: "Shared Editor",
+          email: "repo-editor@example.com",
+        },
       ],
       skipDuplicates: true,
     });
@@ -36,7 +42,7 @@ describe("PrismaDocumentRepository", () => {
 
   afterAll(async () => {
     await prisma.user.deleteMany({
-      where: { id: { in: [ownerId, otherOwnerId] } },
+      where: { id: { in: [ownerId, otherOwnerId, sharedEditorId] } },
     });
     await prisma.$disconnect();
   });
@@ -94,7 +100,7 @@ describe("PrismaDocumentRepository", () => {
     await expect(
       repository.updateContentIfVersionMatches({
         id: document.id,
-        ownerId,
+        viewerId: ownerId,
         expectedVersion: 1,
         contentJson: updatedContent,
         contentText: "Version two",
@@ -103,7 +109,7 @@ describe("PrismaDocumentRepository", () => {
     await expect(
       repository.updateContentIfVersionMatches({
         id: document.id,
-        ownerId,
+        viewerId: ownerId,
         expectedVersion: 1,
         contentJson: emptyContent,
         contentText: "",
@@ -112,7 +118,7 @@ describe("PrismaDocumentRepository", () => {
     await expect(
       repository.updateContentIfVersionMatches({
         id: document.id,
-        ownerId: otherOwnerId,
+        viewerId: otherOwnerId,
         expectedVersion: 2,
         contentJson: emptyContent,
         contentText: "",
@@ -124,5 +130,67 @@ describe("PrismaDocumentRepository", () => {
       version: 2,
       contentText: "Version two",
     });
+  });
+
+  it("supports shared-document listing, shared-editor saves, idempotent grants, and revokes", async () => {
+    const document = await repository.create({
+      id: "d9e8a1db-5371-49d9-9ce7-fdbed9bebbc1",
+      ownerId,
+      title: "Shared doc",
+      contentJson: emptyContent,
+      contentText: "",
+    });
+
+    await expect(
+      repository.createShareIfMissing({
+        documentId: document.id,
+        userId: sharedEditorId,
+        role: "EDITOR",
+      }),
+    ).resolves.toMatchObject({ created: true });
+    await expect(
+      repository.createShareIfMissing({
+        documentId: document.id,
+        userId: sharedEditorId,
+        role: "EDITOR",
+      }),
+    ).resolves.toMatchObject({ created: false });
+
+    const sharedList = await repository.listShared({
+      viewerId: sharedEditorId,
+      limit: 10,
+    });
+    expect(sharedList.map((item) => item.id)).toContain(document.id);
+
+    const visibleToEditor = await repository.findByIdForViewer({
+      documentId: document.id,
+      viewerId: sharedEditorId,
+    });
+    expect(visibleToEditor?.viewerShareRole).toBe("EDITOR");
+
+    await expect(
+      repository.updateContentIfVersionMatches({
+        id: document.id,
+        viewerId: sharedEditorId,
+        expectedVersion: 1,
+        contentJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Edited by shared user" }],
+            },
+          ],
+        },
+        contentText: "Edited by shared user",
+      }),
+    ).resolves.toBe(1);
+
+    await expect(
+      repository.deleteShare(document.id, sharedEditorId),
+    ).resolves.toBe(1);
+    await expect(
+      repository.deleteShare(document.id, sharedEditorId),
+    ).resolves.toBe(0);
   });
 });

@@ -47,7 +47,10 @@ export function useDocumentAutosave({
 
   const persist = useCallback(
     async (content: JSONContent) => {
-      if (stateRef.current.status === "conflict") {
+      if (
+        stateRef.current.status === "conflict" ||
+        stateRef.current.status === "revoked"
+      ) {
         return;
       }
 
@@ -95,6 +98,18 @@ export function useDocumentAutosave({
           }
         }
 
+        if (
+          error instanceof ApiClientError &&
+          (error.code === "forbidden" || error.code === "not_found")
+        ) {
+          dispatch({
+            type: "access_revoked",
+            message:
+              "Your access to this document is no longer available. Return to the dashboard to continue.",
+          });
+          return;
+        }
+
         dispatch({
           type: "save_failed",
           message:
@@ -110,7 +125,12 @@ export function useDocumentAutosave({
   const queueSave = useCallback(
     (content: JSONContent) => {
       pendingContentRef.current = content;
-      if (stateRef.current.status === "conflict") return;
+      if (
+        stateRef.current.status === "conflict" ||
+        stateRef.current.status === "revoked"
+      ) {
+        return;
+      }
 
       dispatch({ type: "edited" });
       if (timerRef.current) clearTimeout(timerRef.current);

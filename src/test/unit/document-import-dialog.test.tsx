@@ -33,6 +33,7 @@ const importedDocument: DocumentDetail = {
     name: "Maya Patel",
     email: "maya@example.com",
   },
+  accessRole: "OWNER",
 };
 
 describe("DocumentImportDialog", () => {

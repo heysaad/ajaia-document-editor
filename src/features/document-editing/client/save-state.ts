@@ -22,7 +22,7 @@ export function saveStateReducer(
 ): SaveState {
   switch (action.type) {
     case "edited":
-      return state.status === "conflict"
+      return state.status === "conflict" || state.status === "revoked"
         ? state
         : { ...state, status: "dirty", message: null };
     case "save_started":
@@ -38,6 +38,12 @@ export function saveStateReducer(
       };
     case "save_failed":
       return { ...state, status: "error", message: action.message };
+    case "access_revoked":
+      return {
+        ...state,
+        status: "revoked",
+        message: action.message,
+      };
     case "conflict":
       return {
         ...state,

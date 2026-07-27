@@ -21,6 +21,7 @@ import {
 
 type FormattingToolbarProps = {
   editor: Editor | null;
+  disabled?: boolean;
 };
 
 const controls = [
@@ -100,7 +101,10 @@ const controls = [
   },
 ];
 
-export function FormattingToolbar({ editor }: FormattingToolbarProps) {
+export function FormattingToolbar({
+  editor,
+  disabled = false,
+}: FormattingToolbarProps) {
   return (
     <TooltipProvider delayDuration={150}>
       <div
@@ -121,9 +125,9 @@ export function FormattingToolbar({ editor }: FormattingToolbarProps) {
                   variant={isActive ? "secondary" : "ghost"}
                   aria-label={`${control.label} (${control.shortcut})`}
                   aria-pressed={isActive}
-                  disabled={!editor}
+                  disabled={disabled || !editor}
                   onClick={() => {
-                    if (editor) {
+                    if (!disabled && editor) {
                       control.run(editor);
                     }
                   }}

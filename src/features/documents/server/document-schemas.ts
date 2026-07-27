@@ -11,7 +11,8 @@ export const renameDocumentSchema = z.object({
 });
 
 export const listDocumentsSearchSchema = z.object({
-  cursor: z.string().uuid().optional(),
+  ownedCursor: z.string().uuid().optional(),
+  sharedCursor: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(DOCUMENT_LIST_PAGE_LIMIT),
 });
 

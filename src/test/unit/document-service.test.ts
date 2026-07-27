@@ -2,13 +2,26 @@ import type { JSONContent } from "@tiptap/core";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type {
+  CreateDocumentShareRecordInput,
+  CreateDocumentShareResult,
   DocumentRecord,
+  DocumentViewerRecord,
+  FindDocumentForViewerInput,
+  FindShareTargetInput,
+  ListEligibleShareUsersInput,
+  ListOwnedDocumentRecordsInput,
+  ListSharedDocumentRecordsInput,
+  ShareTargetRecord,
+  UpdateDocumentRecordContentInput,
+  UpdateDocumentRecordTitleInput,
 } from "@/features/documents/models";
 import { DocumentService } from "@/features/documents/server/DocumentService";
 import type { IDocumentRepository } from "@/features/documents/server/IDocumentRepository";
+import type { DocumentShareRecord } from "@/features/document-sharing/models";
 import {
   ConflictError,
   ForbiddenError,
+  NotFoundError,
   ValidationError,
 } from "@/lib/application-errors";
 
@@ -17,7 +30,16 @@ const owner = {
   name: "Maya Patel",
   email: "maya@example.com",
 };
-const otherUserId = "49954d99-caf9-4d2d-ba4e-54c56a59f977";
+const sharedEditor = {
+  id: "49954d99-caf9-4d2d-ba4e-54c56a59f977",
+  name: "Jordan Lee",
+  email: "jordan@example.com",
+};
+const unrelatedUser = {
+  id: "bb59da17-4c4f-4c6b-a3ec-06a57e7df833",
+  name: "Avery Carter",
+  email: "avery@example.com",
+};
 const documentId = "5c301301-2b15-47ec-ae55-b0f3ac3bcf51";
 const initialContent: JSONContent = {
   type: "doc",
@@ -39,12 +61,30 @@ function record(overrides: Partial<DocumentRecord> = {}): DocumentRecord {
   };
 }
 
+function shareRecord(
+  overrides: Partial<DocumentShareRecord> = {},
+): DocumentShareRecord {
+  return {
+    documentId,
+    userId: sharedEditor.id,
+    role: "EDITOR",
+    createdAt: new Date("2026-07-27T10:05:00.000Z"),
+    updatedAt: new Date("2026-07-27T10:05:00.000Z"),
+    user: sharedEditor,
+    ...overrides,
+  };
+}
+
 class InMemoryDocumentRepository implements IDocumentRepository {
   private readonly documents: Map<string, DocumentRecord>;
+  private readonly shares: Map<string, DocumentShareRecord>;
   contentWrites = 0;
 
-  constructor(seed: DocumentRecord[]) {
-    this.documents = new Map(seed.map((item) => [item.id, item]));
+  constructor(seedDocuments: DocumentRecord[], seedShares: DocumentShareRecord[] = []) {
+    this.documents = new Map(seedDocuments.map((item) => [item.id, item]));
+    this.shares = new Map(
+      seedShares.map((item) => [`${item.documentId}:${item.userId}`, item]),
+    );
   }
 
   async create(
@@ -61,12 +101,19 @@ class InMemoryDocumentRepository implements IDocumentRepository {
     return created;
   }
 
-  async listOwned({
-    ownerId,
-    limit,
-  }: Parameters<IDocumentRepository["listOwned"]>[0]) {
+  async listOwned({ ownerId, limit }: ListOwnedDocumentRecordsInput) {
     return [...this.documents.values()]
       .filter((item) => item.ownerId === ownerId)
+      .slice(0, limit);
+  }
+
+  async listShared({ viewerId, limit }: ListSharedDocumentRecordsInput) {
+    const sharedDocumentIds = [...this.shares.values()]
+      .filter((share) => share.userId === viewerId)
+      .map((share) => share.documentId);
+
+    return [...this.documents.values()]
+      .filter((item) => sharedDocumentIds.includes(item.id))
       .slice(0, limit);
   }
 
@@ -74,10 +121,24 @@ class InMemoryDocumentRepository implements IDocumentRepository {
     return this.documents.get(id) ?? null;
   }
 
-  async updateTitle({
-    id,
-    title,
-  }: Parameters<IDocumentRepository["updateTitle"]>[0]) {
+  async findByIdForViewer({
+    documentId: requestedDocumentId,
+    viewerId,
+  }: FindDocumentForViewerInput): Promise<DocumentViewerRecord | null> {
+    const document = this.documents.get(requestedDocumentId);
+
+    if (!document) {
+      return null;
+    }
+
+    const share = this.shares.get(`${requestedDocumentId}:${viewerId}`);
+    return {
+      ...document,
+      viewerShareRole: share?.role ?? null,
+    };
+  }
+
+  async updateTitle({ id, title }: UpdateDocumentRecordTitleInput) {
     const current = this.documents.get(id)!;
     const updated = { ...current, title, updatedAt: new Date() };
     this.documents.set(id, updated);
@@ -86,21 +147,25 @@ class InMemoryDocumentRepository implements IDocumentRepository {
 
   async deleteById(id: string) {
     this.documents.delete(id);
+    for (const key of [...this.shares.keys()]) {
+      if (key.startsWith(`${id}:`)) {
+        this.shares.delete(key);
+      }
+    }
   }
 
-  async updateContentIfVersionMatches(
-    input: Parameters<
-      IDocumentRepository["updateContentIfVersionMatches"]
-    >[0],
-  ) {
+  async updateContentIfVersionMatches(input: UpdateDocumentRecordContentInput) {
     const current = this.documents.get(input.id);
+    const share = this.shares.get(`${input.id}:${input.viewerId}`);
+
     if (
       !current ||
-      current.ownerId !== input.ownerId ||
-      current.version !== input.expectedVersion
+      current.version !== input.expectedVersion ||
+      (current.ownerId !== input.viewerId && share?.role !== "EDITOR")
     ) {
       return 0;
     }
+
     this.contentWrites += 1;
     this.documents.set(input.id, {
       ...current,
@@ -112,6 +177,51 @@ class InMemoryDocumentRepository implements IDocumentRepository {
     return 1;
   }
 
+  async listShares(requestedDocumentId: string) {
+    return [...this.shares.values()].filter(
+      (share) => share.documentId === requestedDocumentId,
+    );
+  }
+
+  async listEligibleShareUsers(_input: ListEligibleShareUsersInput) {
+    return [sharedEditor, unrelatedUser] satisfies ShareTargetRecord[];
+  }
+
+  async findShareTarget({ userId, normalizedEmail }: FindShareTargetInput) {
+    return [owner, sharedEditor, unrelatedUser].find(
+      (candidate) =>
+        candidate.id === userId || candidate.email === normalizedEmail,
+    ) ?? null;
+  }
+
+  async createShareIfMissing(
+    input: CreateDocumentShareRecordInput,
+  ): Promise<CreateDocumentShareResult> {
+    const key = `${input.documentId}:${input.userId}`;
+    const existing = this.shares.get(key);
+    if (existing) {
+      return { share: existing, created: false };
+    }
+
+    const target = [owner, sharedEditor, unrelatedUser].find(
+      (candidate) => candidate.id === input.userId,
+    )!;
+    const created = shareRecord({
+      documentId: input.documentId,
+      userId: input.userId,
+      user: target,
+      role: input.role,
+    });
+    this.shares.set(key, created);
+    return { share: created, created: true };
+  }
+
+  async deleteShare(requestedDocumentId: string, userId: string) {
+    const key = `${requestedDocumentId}:${userId}`;
+    const existed = this.shares.delete(key);
+    return existed ? 1 : 0;
+  }
+
   get(id: string) {
     return this.documents.get(id);
   }
@@ -121,59 +231,81 @@ describe("document service", () => {
   let repository: InMemoryDocumentRepository;
 
   beforeEach(() => {
-    repository = new InMemoryDocumentRepository([record()]);
+    repository = new InMemoryDocumentRepository([record()], [shareRecord()]);
   });
 
-  it("enforces ownership for reads, renames, and deletes", async () => {
-    const service = new DocumentService(repository);
-
-    await expect(
-      service.getOwnedDocument({ ownerId: otherUserId, documentId }),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-    await expect(
-      service.renameDocument({
-        ownerId: otherUserId,
-        documentId,
-        title: "Stolen",
-      }),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-    await expect(
-      service.deleteDocument({ ownerId: otherUserId, documentId }),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-    expect(repository.get(documentId)?.title).toBe("Draft");
-  });
-
-  it("increments the version exactly once for a valid content save", async () => {
+  it("allows a shared editor to read and save content but not rename or delete", async () => {
     const service = new DocumentService(repository);
     const content: JSONContent = {
       type: "doc",
       content: [
         {
           type: "paragraph",
-          content: [{ type: "text", text: "Saved once" }],
+          content: [{ type: "text", text: "Shared edit" }],
         },
       ],
     };
 
+    await expect(
+      service.getDocumentForViewer({
+        viewerId: sharedEditor.id,
+        documentId,
+      }),
+    ).resolves.toMatchObject({ accessRole: "EDITOR" });
+
     const saved = await service.updateDocumentContent({
-      ownerId: owner.id,
+      viewerId: sharedEditor.id,
       documentId,
       expectedVersion: 1,
       content,
     });
 
     expect(saved.version).toBe(2);
-    expect(saved.excerpt).toBe("Saved once");
-    expect(repository.contentWrites).toBe(1);
+    expect(saved.excerpt).toBe("Shared edit");
+    await expect(
+      service.renameDocument({
+        ownerId: sharedEditor.id,
+        documentId,
+        title: "Nope",
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      service.deleteDocument({
+        ownerId: sharedEditor.id,
+        documentId,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("hides unrelated documents from non-members", async () => {
+    const service = new DocumentService(repository);
+
+    await expect(
+      service.getDocumentForViewer({
+        viewerId: unrelatedUser.id,
+        documentId,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(
+      service.updateDocumentContent({
+        viewerId: unrelatedUser.id,
+        documentId,
+        expectedVersion: 1,
+        content: initialContent,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("returns a conflict without overwriting a newer version", async () => {
-    repository = new InMemoryDocumentRepository([record({ version: 3 })]);
+    repository = new InMemoryDocumentRepository(
+      [record({ version: 3 })],
+      [shareRecord()],
+    );
     const service = new DocumentService(repository);
 
     await expect(
       service.updateDocumentContent({
-        ownerId: owner.id,
+        viewerId: owner.id,
         documentId,
         expectedVersion: 2,
         content: initialContent,
@@ -188,7 +320,7 @@ describe("document service", () => {
 
     await expect(
       service.updateDocumentContent({
-        ownerId: owner.id,
+        viewerId: owner.id,
         documentId,
         expectedVersion: 1,
         content: { type: "doc", content: [{ type: "image" }] },
@@ -196,5 +328,38 @@ describe("document service", () => {
     ).rejects.toBeInstanceOf(ValidationError);
     expect(repository.contentWrites).toBe(0);
     expect(repository.get(documentId)?.version).toBe(1);
+  });
+
+  it("prevents self-sharing and allows revoke after a valid share", async () => {
+    const service = new DocumentService(repository);
+
+    await expect(
+      service.grantDocumentShare({
+        ownerId: owner.id,
+        documentId,
+        email: "maya@example.com",
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+
+    const granted = await service.grantDocumentShare({
+      ownerId: owner.id,
+      documentId,
+      userId: unrelatedUser.id,
+    });
+    expect(granted).toMatchObject({
+      created: true,
+      share: {
+        user: unrelatedUser,
+        role: "EDITOR",
+      },
+    });
+
+    await expect(
+      service.revokeDocumentShare({
+        ownerId: owner.id,
+        documentId,
+        userId: unrelatedUser.id,
+      }),
+    ).resolves.toBeUndefined();
   });
 });

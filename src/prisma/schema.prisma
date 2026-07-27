@@ -8,16 +8,17 @@ datasource db {
 }
 
 model User {
-  id            String     @id @default(uuid()) @db.Uuid
-  name          String     @db.VarChar(120)
-  email         String     @unique @db.VarChar(320)
-  emailVerified Boolean    @default(false)
-  image         String?    @db.Text
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  documents     Document[]
-  sessions      Session[]
-  accounts      Account[]
+  id             String          @id @default(uuid()) @db.Uuid
+  name           String          @db.VarChar(120)
+  email          String          @unique @db.VarChar(320)
+  emailVerified  Boolean         @default(false)
+  image          String?         @db.Text
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  documents      Document[]
+  documentShares DocumentShare[]
+  sessions       Session[]
+  accounts       Account[]
 }
 
 model Session {
@@ -66,15 +67,34 @@ model Verification {
 }
 
 model Document {
-  id          String   @id @db.Uuid
-  ownerId     String   @db.Uuid
-  title       String   @db.VarChar(120)
+  id          String          @id @db.Uuid
+  ownerId     String          @db.Uuid
+  title       String          @db.VarChar(120)
   contentJson Json
-  contentText String   @db.Text
-  version     Int      @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  contentText String          @db.Text
+  version     Int             @default(1)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  shares      DocumentShare[]
 
   @@index([ownerId, updatedAt(sort: Desc), id(sort: Desc)])
+  @@index([updatedAt(sort: Desc), id(sort: Desc)])
+}
+
+model DocumentShare {
+  documentId String            @db.Uuid
+  userId     String            @db.Uuid
+  role       DocumentShareRole
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  document   Document          @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, userId])
+  @@index([userId, documentId])
+}
+
+enum DocumentShareRole {
+  EDITOR
 }

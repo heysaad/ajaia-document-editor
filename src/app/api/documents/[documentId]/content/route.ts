@@ -24,7 +24,7 @@ export const PUT = handleRoute(async (
   const params = documentIdParamSchema.parse(await context.params);
   const body = await parseJsonBody(request, updateDocumentContentSchema);
   const document = await documentService.updateDocumentContent({
-    ownerId: viewer.id,
+    viewerId: viewer.id,
     documentId: params.documentId,
     expectedVersion: body.expectedVersion,
     content: body.content,

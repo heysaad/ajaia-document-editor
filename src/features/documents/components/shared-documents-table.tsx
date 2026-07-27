@@ -54,8 +54,10 @@ export function SharedDocumentsTable({
                 </div>
               </td>
               <td className="px-6 py-5 text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">{document.owner.name}</p>
-                <p className="mt-1">{document.owner.email}</p>
+                <p className="font-medium text-foreground">
+                  {document.owner?.name ?? "Unknown owner"}
+                </p>
+                <p className="mt-1">{document.owner?.email ?? "Unknown email"}</p>
               </td>
               <td className="px-6 py-5 text-sm text-muted-foreground">
                 {formatter.format(new Date(document.updatedAt))}

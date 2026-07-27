@@ -1,9 +1,20 @@
 import type { JSONContent } from "@tiptap/core";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { DocumentRecord } from "@/features/documents/models";
+import type {
+  CreateDocumentShareRecordInput,
+  CreateDocumentShareResult,
+  DocumentRecord,
+  DocumentViewerRecord,
+  FindDocumentForViewerInput,
+  FindShareTargetInput,
+  ListEligibleShareUsersInput,
+  ListSharedDocumentRecordsInput,
+  ShareTargetRecord,
+} from "@/features/documents/models";
 import { DocumentService } from "@/features/documents/server/DocumentService";
 import type { IDocumentRepository } from "@/features/documents/server/IDocumentRepository";
+import type { DocumentShareRecord } from "@/features/document-sharing/models";
 
 const owner = {
   id: "771f2b30-3b0c-40d8-a96f-6c2ded9e70a1",
@@ -58,8 +69,27 @@ class InMemoryDocumentRepository implements IDocumentRepository {
     return [];
   }
 
+  async listShared(_input: ListSharedDocumentRecordsInput) {
+    return [];
+  }
+
   async findById(id: string) {
     return this.documents.get(id) ?? null;
+  }
+
+  async findByIdForViewer({
+    documentId,
+  }: FindDocumentForViewerInput): Promise<DocumentViewerRecord | null> {
+    const document = this.documents.get(documentId);
+
+    if (!document) {
+      return null;
+    }
+
+    return {
+      ...document,
+      viewerShareRole: null,
+    };
   }
 
   async updateTitle() {
@@ -71,6 +101,32 @@ class InMemoryDocumentRepository implements IDocumentRepository {
   }
 
   async updateContentIfVersionMatches() {
+    return 0;
+  }
+
+  async listShares(): Promise<DocumentShareRecord[]> {
+    return [];
+  }
+
+  async listEligibleShareUsers(
+    _input: ListEligibleShareUsersInput,
+  ): Promise<ShareTargetRecord[]> {
+    return [];
+  }
+
+  async findShareTarget(
+    _input: FindShareTargetInput,
+  ): Promise<ShareTargetRecord | null> {
+    return null;
+  }
+
+  async createShareIfMissing(
+    _input: CreateDocumentShareRecordInput,
+  ): Promise<CreateDocumentShareResult> {
+    throw new Error("Not implemented in this test.");
+  }
+
+  async deleteShare() {
     return 0;
   }
 

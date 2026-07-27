@@ -1,69 +1,145 @@
 import type { JSONContent } from "@tiptap/core";
 
-import {
-  convertImportedDocument,
-} from "@/features/document-import/server/import-document";
+import { convertImportedDocument } from "@/features/document-import/server/import-document";
 import {
   createEmptyDocumentContent,
   documentContentToPlainText,
   parseDocumentContent,
 } from "@/features/document-editing/server/document-content";
+import type {
+  DocumentShareListResult,
+  DocumentShareSummary,
+  EligibleShareUsersResult,
+  GrantDocumentShareResult,
+} from "@/features/document-sharing/models";
 import {
-  normalizeCreateTitle,
-  normalizeRenameTitle,
-} from "@/features/documents/server/document-title";
+  resolveDocumentAccess,
+  toDocumentAccessRole,
+  type DocumentAccessState,
+} from "@/features/document-sharing/server/document-access-policy";
+import { normalizeShareEmail } from "@/features/document-sharing/server/share-email";
 import type {
   CreateDocumentInput,
   DeleteDocumentInput,
+  DocumentDashboardData,
   DocumentDetail,
   DocumentListResult,
   DocumentRecord,
-  DocumentSummary,
+  DocumentViewerRecord,
+  DashboardDocumentSummary,
+  GetDocumentForViewerInput,
   GetOwnedDocumentInput,
+  GrantDocumentShareInput,
   ImportDocumentInput,
+  ListDashboardDocumentsInput,
+  ListDocumentSharesInput,
+  ListEligibleShareUsersRequest,
   ListOwnedDocumentsInput,
   RenameDocumentInput,
+  RevokeDocumentShareInput,
   UpdateDocumentContentInput,
 } from "@/features/documents/models";
 import type { IDocumentRepository } from "@/features/documents/server/IDocumentRepository";
 import type { IDocumentService } from "@/features/documents/server/IDocumentService";
 import {
+  normalizeCreateTitle,
+  normalizeRenameTitle,
+} from "@/features/documents/server/document-title";
+import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  ValidationError,
 } from "@/lib/application-errors";
 
-function toSummary(document: DocumentRecord): DocumentSummary {
+function toSummary(
+  document: DocumentRecord,
+  accessState: Exclude<DocumentAccessState, "none">,
+): DashboardDocumentSummary {
   return {
     id: document.id,
     title: document.title,
     excerpt: document.contentText,
     version: document.version,
     updatedAt: document.updatedAt.toISOString(),
-  };
-}
-
-function toDetail(document: DocumentRecord): DocumentDetail {
-  return {
-    ...toSummary(document),
-    contentJson: document.contentJson as JSONContent,
-    createdAt: document.createdAt.toISOString(),
+    accessRole: toDocumentAccessRole(accessState),
     owner: document.owner,
   };
 }
 
-async function getAuthorizedDocumentOrThrow(
+function toDetail(
+  document: DocumentRecord,
+  accessState: Exclude<DocumentAccessState, "none">,
+): DocumentDetail {
+  return {
+    id: document.id,
+    title: document.title,
+    excerpt: document.contentText,
+    version: document.version,
+    updatedAt: document.updatedAt.toISOString(),
+    contentJson: document.contentJson as JSONContent,
+    createdAt: document.createdAt.toISOString(),
+    owner: document.owner,
+    accessRole: toDocumentAccessRole(accessState),
+  };
+}
+
+function toShareSummary(share: {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  role: "EDITOR";
+  createdAt: Date;
+}): DocumentShareSummary {
+  return {
+    user: share.user,
+    role: share.role,
+    createdAt: share.createdAt.toISOString(),
+  };
+}
+
+async function getViewerDocumentOrThrow(
   repository: IDocumentRepository,
   documentId: string,
   viewerId: string,
-) {
-  const document = await repository.findById(documentId);
+): Promise<{
+  document: DocumentViewerRecord;
+  accessState: Exclude<DocumentAccessState, "none">;
+}> {
+  const document = await repository.findByIdForViewer({
+    documentId,
+    viewerId,
+  });
 
   if (!document) {
     throw new NotFoundError("Document not found.");
   }
 
-  if (document.ownerId !== viewerId) {
+  const accessState = resolveDocumentAccess(document, viewerId);
+  if (accessState === "none") {
+    throw new NotFoundError("Document not found.");
+  }
+
+  return {
+    document,
+    accessState,
+  };
+}
+
+async function requireOwnerDocumentOrThrow(
+  repository: IDocumentRepository,
+  documentId: string,
+  ownerId: string,
+) {
+  const { document, accessState } = await getViewerDocumentOrThrow(
+    repository,
+    documentId,
+    ownerId,
+  );
+
+  if (accessState !== "owner") {
     throw new ForbiddenError();
   }
 
@@ -83,7 +159,7 @@ export class DocumentService implements IDocumentService {
       contentText: "",
     });
 
-    return toDetail(document);
+    return toDetail(document, "owner");
   }
 
   async importDocument(input: ImportDocumentInput): Promise<DocumentDetail> {
@@ -101,7 +177,44 @@ export class DocumentService implements IDocumentService {
       contentText: imported.contentText,
     });
 
-    return toDetail(document);
+    return toDetail(document, "owner");
+  }
+
+  async listDashboardDocuments(
+    input: ListDashboardDocumentsInput,
+  ): Promise<DocumentDashboardData> {
+    const [ownedDocuments, sharedDocuments] = await Promise.all([
+      this.repository.listOwned({
+        ownerId: input.viewerId,
+        cursor: input.ownedCursor,
+        limit: input.limit + 1,
+      }),
+      this.repository.listShared({
+        viewerId: input.viewerId,
+        cursor: input.sharedCursor,
+        limit: input.limit + 1,
+      }),
+    ]);
+
+    const ownedHasMore = ownedDocuments.length > input.limit;
+    const ownedItems = ownedHasMore
+      ? ownedDocuments.slice(0, input.limit)
+      : ownedDocuments;
+    const sharedHasMore = sharedDocuments.length > input.limit;
+    const sharedItems = sharedHasMore
+      ? sharedDocuments.slice(0, input.limit)
+      : sharedDocuments;
+
+    return {
+      owned: {
+        items: ownedItems.map((document) => toSummary(document, "owner")),
+        nextCursor: ownedHasMore ? ownedItems.at(-1)?.id ?? null : null,
+      },
+      shared: {
+        items: sharedItems.map((document) => toSummary(document, "shared_editor")),
+        nextCursor: sharedHasMore ? sharedItems.at(-1)?.id ?? null : null,
+      },
+    };
   }
 
   async listOwnedDocuments(
@@ -117,23 +230,32 @@ export class DocumentService implements IDocumentService {
     const items = hasMore ? documents.slice(0, input.limit) : documents;
 
     return {
-      items: items.map(toSummary),
+      items: items.map((document) => toSummary(document, "owner")),
       nextCursor: hasMore ? items.at(-1)?.id ?? null : null,
     };
   }
 
-  async getOwnedDocument(input: GetOwnedDocumentInput): Promise<DocumentDetail> {
-    const document = await getAuthorizedDocumentOrThrow(
+  async getDocumentForViewer(
+    input: GetDocumentForViewerInput,
+  ): Promise<DocumentDetail> {
+    const { document, accessState } = await getViewerDocumentOrThrow(
       this.repository,
       input.documentId,
-      input.ownerId,
+      input.viewerId,
     );
 
-    return toDetail(document);
+    return toDetail(document, accessState);
+  }
+
+  async getOwnedDocument(input: GetOwnedDocumentInput): Promise<DocumentDetail> {
+    return this.getDocumentForViewer({
+      viewerId: input.ownerId,
+      documentId: input.documentId,
+    });
   }
 
   async renameDocument(input: RenameDocumentInput): Promise<DocumentDetail> {
-    await getAuthorizedDocumentOrThrow(
+    await requireOwnerDocumentOrThrow(
       this.repository,
       input.documentId,
       input.ownerId,
@@ -144,11 +266,11 @@ export class DocumentService implements IDocumentService {
       title: normalizeRenameTitle(input.title),
     });
 
-    return toDetail(document);
+    return toDetail(document, "owner");
   }
 
   async deleteDocument(input: DeleteDocumentInput): Promise<void> {
-    await getAuthorizedDocumentOrThrow(
+    await requireOwnerDocumentOrThrow(
       this.repository,
       input.documentId,
       input.ownerId,
@@ -160,46 +282,150 @@ export class DocumentService implements IDocumentService {
   async updateDocumentContent(
     input: UpdateDocumentContentInput,
   ): Promise<DocumentDetail> {
-    const currentDocument = await getAuthorizedDocumentOrThrow(
-      this.repository,
-      input.documentId,
-      input.ownerId,
-    );
+    const { document: currentDocument, accessState } =
+      await getViewerDocumentOrThrow(
+        this.repository,
+        input.documentId,
+        input.viewerId,
+      );
     const parsedContent = parseDocumentContent(input.content);
     const contentText = documentContentToPlainText(parsedContent);
 
     const updatedCount = await this.repository.updateContentIfVersionMatches({
       id: input.documentId,
-      ownerId: input.ownerId,
+      viewerId: input.viewerId,
       expectedVersion: input.expectedVersion,
       contentJson: parsedContent,
       contentText,
     });
 
     if (updatedCount === 0) {
-      const latestDocument = await getAuthorizedDocumentOrThrow(
-        this.repository,
-        input.documentId,
-        input.ownerId,
-      );
+      const latestDocument = await this.getDocumentForViewer({
+        viewerId: input.viewerId,
+        documentId: input.documentId,
+      });
 
       throw new ConflictError("A newer version of this document exists.", {
-        latestDocument: toDetail(latestDocument),
+        latestDocument,
       });
     }
 
-    const savedDocument = await getAuthorizedDocumentOrThrow(
+    const savedDocument = await this.getDocumentForViewer({
+      viewerId: input.viewerId,
+      documentId: input.documentId,
+    });
+
+    if (savedDocument.version !== currentDocument.version + 1) {
+      throw new ConflictError("Document version changed unexpectedly.", {
+        latestDocument: savedDocument,
+      });
+    }
+
+    return {
+      ...savedDocument,
+      accessRole: toDocumentAccessRole(accessState),
+    };
+  }
+
+  async listDocumentShares(
+    input: ListDocumentSharesInput,
+  ): Promise<DocumentShareListResult> {
+    await requireOwnerDocumentOrThrow(
       this.repository,
       input.documentId,
       input.ownerId,
     );
 
-    if (savedDocument.version !== currentDocument.version + 1) {
-      throw new ConflictError("Document version changed unexpectedly.", {
-        latestDocument: toDetail(savedDocument),
+    const shares = await this.repository.listShares(input.documentId);
+    return {
+      items: shares.map(toShareSummary),
+    };
+  }
+
+  async listEligibleShareUsers(
+    input: ListEligibleShareUsersRequest,
+  ): Promise<EligibleShareUsersResult> {
+    await requireOwnerDocumentOrThrow(
+      this.repository,
+      input.documentId,
+      input.ownerId,
+    );
+
+    return {
+      items: await this.repository.listEligibleShareUsers({
+        documentId: input.documentId,
+        ownerId: input.ownerId,
+      }),
+    };
+  }
+
+  async grantDocumentShare(
+    input: GrantDocumentShareInput,
+  ): Promise<GrantDocumentShareResult> {
+    const ownerDocument = await requireOwnerDocumentOrThrow(
+      this.repository,
+      input.documentId,
+      input.ownerId,
+    );
+    const normalizedEmail = input.email
+      ? normalizeShareEmail(input.email)
+      : undefined;
+
+    if (
+      input.userId === input.ownerId ||
+      normalizedEmail === normalizeShareEmail(ownerDocument.owner.email)
+    ) {
+      throw new ValidationError("You cannot share a document with yourself.", {
+        field: "shareTarget",
+        reason: "self_share_not_allowed",
       });
     }
 
-    return toDetail(savedDocument);
+    const target = await this.repository.findShareTarget({
+      userId: input.userId,
+      normalizedEmail,
+    });
+
+    if (!target) {
+      throw new ValidationError("The selected reviewer cannot be granted access.", {
+        field: "shareTarget",
+        reason: "invalid_share_target",
+      });
+    }
+
+    if (target.id === input.ownerId) {
+      throw new ValidationError("You cannot share a document with yourself.", {
+        field: "shareTarget",
+        reason: "self_share_not_allowed",
+      });
+    }
+
+    const result = await this.repository.createShareIfMissing({
+      documentId: input.documentId,
+      userId: target.id,
+      role: "EDITOR",
+    });
+
+    return {
+      share: toShareSummary(result.share),
+      created: result.created,
+    };
+  }
+
+  async revokeDocumentShare(input: RevokeDocumentShareInput): Promise<void> {
+    await requireOwnerDocumentOrThrow(
+      this.repository,
+      input.documentId,
+      input.ownerId,
+    );
+
+    const deletedCount = await this.repository.deleteShare(
+      input.documentId,
+      input.userId,
+    );
+
+    if (deletedCount === 0) {
+      throw new NotFoundError("Document share not found.");
+    }
   }
 }

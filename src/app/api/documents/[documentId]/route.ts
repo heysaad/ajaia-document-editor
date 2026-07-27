@@ -22,8 +22,8 @@ export const GET = handleRoute(async (
 ) => {
   const viewer = await resolveSessionUser();
   const params = documentIdParamSchema.parse(await context.params);
-  const document = await documentService.getOwnedDocument({
-    ownerId: viewer.id,
+  const document = await documentService.getDocumentForViewer({
+    viewerId: viewer.id,
     documentId: params.documentId,
   });
 

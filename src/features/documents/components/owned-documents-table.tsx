@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PencilLine, Trash2 } from "lucide-react";
+import { PencilLine, Share2, Trash2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ type OwnedDocumentsTableProps = {
   onRenameStart: (document: DashboardDocumentSummary) => void;
   onRenameCancel: () => void;
   onRenameSave: (documentId: string) => void;
+  onShareRequest: (document: DashboardDocumentSummary) => void;
   onDeleteConfirm: (documentId: string) => void;
   isDeletingId: string | null;
   isSavingTitleId: string | null;
@@ -45,6 +46,7 @@ export function OwnedDocumentsTable({
   onRenameStart,
   onRenameCancel,
   onRenameSave,
+  onShareRequest,
   onDeleteConfirm,
   isDeletingId,
   isSavingTitleId,
@@ -143,6 +145,14 @@ export function OwnedDocumentsTable({
                         </Button>
                         <Button size="sm" variant="ghost" asChild>
                           <Link href={`/documents/${document.id}`}>Open</Link>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onShareRequest(document)}
+                        >
+                          <Share2 aria-hidden="true" />
+                          Share
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>

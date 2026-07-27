@@ -16,13 +16,15 @@ export const runtime = "nodejs";
 export const GET = handleRoute(async (request: NextRequest) => {
   const viewer = await resolveSessionUser();
   const query = listDocumentsSearchSchema.parse({
-    cursor: request.nextUrl.searchParams.get("cursor") ?? undefined,
+    ownedCursor: request.nextUrl.searchParams.get("ownedCursor") ?? undefined,
+    sharedCursor: request.nextUrl.searchParams.get("sharedCursor") ?? undefined,
     limit: request.nextUrl.searchParams.get("limit") ?? undefined,
   });
 
-  const documents = await documentService.listOwnedDocuments({
-    ownerId: viewer.id,
-    cursor: query.cursor,
+  const documents = await documentService.listDashboardDocuments({
+    viewerId: viewer.id,
+    ownedCursor: query.ownedCursor,
+    sharedCursor: query.sharedCursor,
     limit: query.limit,
   });
 

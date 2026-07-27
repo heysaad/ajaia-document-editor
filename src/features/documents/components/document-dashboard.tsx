@@ -16,10 +16,12 @@ import {
 } from "@/components/ui/card";
 import { AccountCard } from "@/features/auth/components/account-card";
 import { DocumentImportDialog } from "@/features/document-import/components/document-import-dialog";
+import { DocumentShareDialog } from "@/features/document-sharing/components/document-share-dialog";
 import { fetchJson } from "@/lib/api-client";
 
 import { DocumentEmptyState } from "./document-empty-state";
 import { OwnedDocumentsTable } from "./owned-documents-table";
+import { SharedDocumentsTable } from "./shared-documents-table";
 import type {
   DashboardDocumentSummary,
   DocumentDashboardData,
@@ -45,8 +47,11 @@ export function DocumentDashboard({
   initialData,
 }: DocumentDashboardProps) {
   const router = useRouter();
-  const [documents, setDocuments] = useState<DashboardDocumentSummary[]>(
+  const [ownedDocuments, setOwnedDocuments] = useState<DashboardDocumentSummary[]>(
     initialData?.owned?.items ?? initialDocuments ?? [],
+  );
+  const [sharedDocuments] = useState<DashboardDocumentSummary[]>(
+    initialData?.shared?.items ?? [],
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
@@ -55,6 +60,8 @@ export function DocumentDashboard({
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [isSavingTitleId, setIsSavingTitleId] = useState<string | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [shareDialogDocument, setShareDialogDocument] =
+    useState<DashboardDocumentSummary | null>(null);
 
   async function handleCreateDocument() {
     setErrorMessage(null);
@@ -91,7 +98,7 @@ export function DocumentDashboard({
         },
       );
 
-      setDocuments((current) =>
+      setOwnedDocuments((current) =>
         current.map((document) =>
           document.id === documentId ? updatedDocument : document,
         ),
@@ -116,7 +123,7 @@ export function DocumentDashboard({
         method: "DELETE",
       });
 
-      setDocuments((current) =>
+      setOwnedDocuments((current) =>
         current.filter((document) => document.id !== documentId),
       );
     } catch (error) {
@@ -180,7 +187,7 @@ export function DocumentDashboard({
               Open, rename, delete, or continue editing from one table.
             </p>
           </div>
-          <Badge variant="outline">{documents.length} documents</Badge>
+          <Badge variant="outline">{ownedDocuments.length} documents</Badge>
         </div>
 
         <Card>
@@ -191,7 +198,7 @@ export function DocumentDashboard({
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            {documents.length === 0 ? (
+            {ownedDocuments.length === 0 ? (
               <div className="p-6">
                 <DocumentEmptyState
                   isCreating={isCreating}
@@ -201,7 +208,7 @@ export function DocumentDashboard({
               </div>
             ) : (
               <OwnedDocumentsTable
-                documents={documents}
+                documents={ownedDocuments}
                 renameDocumentId={renameDocumentId}
                 renameValue={renameValue}
                 onRenameValueChange={setRenameValue}
@@ -216,12 +223,57 @@ export function DocumentDashboard({
                 onRenameSave={(documentId) =>
                   void handleRenameDocument(documentId)
                 }
+                onShareRequest={setShareDialogDocument}
                 onDeleteConfirm={(documentId) =>
                   void handleDeleteDocument(documentId)
                 }
                 isDeletingId={isDeletingId}
                 isSavingTitleId={isSavingTitleId}
               />
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">
+              Shared with me
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Shared documents stay visibly distinct and keep owner identity in
+              view.
+            </p>
+          </div>
+          <Badge variant="outline">{sharedDocuments.length} documents</Badge>
+        </div>
+
+        <Card>
+          <CardHeader className="border-b border-border/70 pb-4">
+            <CardTitle className="text-base">Shared document library</CardTitle>
+            <CardDescription>
+              Shared editors can open and edit content, but owner-only actions
+              stay hidden here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {sharedDocuments.length === 0 ? (
+              <div className="p-6">
+                <Card className="border-dashed shadow-none">
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      No shared documents yet
+                    </CardTitle>
+                    <CardDescription>
+                      Documents shared by other seeded users will appear in this
+                      section with the owner clearly identified.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </div>
+            ) : (
+              <SharedDocumentsTable documents={sharedDocuments} />
             )}
           </CardContent>
         </Card>
@@ -234,6 +286,19 @@ export function DocumentDashboard({
           router.push(`/documents/${document.id}`);
         }}
       />
+
+      {shareDialogDocument ? (
+        <DocumentShareDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setShareDialogDocument(null);
+            }
+          }}
+          documentId={shareDialogDocument.id}
+          documentTitle={shareDialogDocument.title}
+        />
+      ) : null}
     </main>
   );
 }

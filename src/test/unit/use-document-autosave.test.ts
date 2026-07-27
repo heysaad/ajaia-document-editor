@@ -25,6 +25,7 @@ function savedDocument(contentJson: JSONContent, version = 2): DocumentDetail {
       name: "Maya Patel",
       email: "maya@example.com",
     },
+    accessRole: "OWNER",
   };
 }
 
