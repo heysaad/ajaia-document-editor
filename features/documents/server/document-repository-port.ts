@@ -1,12 +1,12 @@
 import type { JSONContent } from "@tiptap/core";
 
-export type DocumentOwnerRecord = {
+export interface DocumentOwnerRecord {
   id: string;
   name: string;
   email: string;
-};
+}
 
-export type DocumentRecord = {
+export interface DocumentRecord {
   id: string;
   ownerId: string;
   title: string;
@@ -16,29 +16,42 @@ export type DocumentRecord = {
   createdAt: Date;
   updatedAt: Date;
   owner: DocumentOwnerRecord;
-};
+}
 
-export type DocumentRepository = {
-  create(input: {
-    id: string;
-    ownerId: string;
-    title: string;
-    contentJson: JSONContent;
-    contentText: string;
-  }): Promise<DocumentRecord>;
-  listOwned(input: {
-    ownerId: string;
-    cursor?: string;
-    limit: number;
-  }): Promise<DocumentRecord[]>;
+export interface CreateDocumentRecordInput {
+  id: string;
+  ownerId: string;
+  title: string;
+  contentJson: JSONContent;
+  contentText: string;
+}
+
+export interface ListOwnedDocumentsInput {
+  ownerId: string;
+  cursor?: string;
+  limit: number;
+}
+
+export interface UpdateDocumentTitleInput {
+  id: string;
+  title: string;
+}
+
+export interface UpdateDocumentContentInput {
+  id: string;
+  ownerId: string;
+  expectedVersion: number;
+  contentJson: JSONContent;
+  contentText: string;
+}
+
+export interface DocumentRepositoryPort {
+  create(input: CreateDocumentRecordInput): Promise<DocumentRecord>;
+  listOwned(input: ListOwnedDocumentsInput): Promise<DocumentRecord[]>;
   findById(id: string): Promise<DocumentRecord | null>;
-  updateTitle(input: { id: string; title: string }): Promise<DocumentRecord>;
+  updateTitle(input: UpdateDocumentTitleInput): Promise<DocumentRecord>;
   deleteById(id: string): Promise<void>;
-  updateContentIfVersionMatches(input: {
-    id: string;
-    ownerId: string;
-    expectedVersion: number;
-    contentJson: JSONContent;
-    contentText: string;
-  }): Promise<number>;
-};
+  updateContentIfVersionMatches(
+    input: UpdateDocumentContentInput,
+  ): Promise<number>;
+}

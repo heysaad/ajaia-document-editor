@@ -1,6 +1,12 @@
 import "server-only";
 
-import { documentRepository } from "@/features/documents/server/document-prisma-repository";
-import { createDocumentService } from "@/features/documents/server/document-service";
+import { PrismaDocumentRepository } from "@/features/documents/server/document-prisma-repository";
+import { DocumentService } from "@/features/documents/server/document-service";
+import type { DocumentServicePort } from "@/features/documents/server/document-service-port";
+import { prisma } from "@/infra/db/prisma";
 
-export const documentService = createDocumentService(documentRepository);
+const documentRepository = new PrismaDocumentRepository(prisma);
+
+export const documentService: DocumentServicePort = new DocumentService(
+  documentRepository,
+);

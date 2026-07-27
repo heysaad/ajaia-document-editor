@@ -3,10 +3,13 @@ import "server-only";
 import type { PrismaClient } from "@prisma/client";
 
 import type {
+  CreateDocumentRecordInput,
   DocumentRecord,
-  DocumentRepository,
+  DocumentRepositoryPort,
+  ListOwnedDocumentsInput,
+  UpdateDocumentContentInput,
+  UpdateDocumentTitleInput,
 } from "@/features/documents/server/document-repository-port";
-import { prisma } from "@/infra/db/prisma";
 
 function mapPrismaDocument(record: {
   id: string;
@@ -29,85 +32,97 @@ function mapPrismaDocument(record: {
   };
 }
 
-function createPrismaDocumentRepository(db: PrismaClient): DocumentRepository {
-  return {
-    async create(input) {
-      const document = await db.document.create({
-        data: input,
-        include: {
-          owner: {
-            select: { id: true, name: true, email: true },
-          },
-        },
-      });
+export class PrismaDocumentRepository implements DocumentRepositoryPort {
+  constructor(private readonly db: PrismaClient) {}
 
-      return mapPrismaDocument(document);
-    },
-    async listOwned({ ownerId, cursor, limit }) {
-      const documents = await db.document.findMany({
-        where: { ownerId },
-        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-        ...(cursor
-          ? {
-              cursor: { id: cursor },
-              skip: 1,
-            }
-          : {}),
-        take: limit,
-        include: {
-          owner: {
-            select: { id: true, name: true, email: true },
-          },
+  async create(input: CreateDocumentRecordInput): Promise<DocumentRecord> {
+    const document = await this.db.document.create({
+      data: input,
+      include: {
+        owner: {
+          select: { id: true, name: true, email: true },
         },
-      });
+      },
+    });
 
-      return documents.map(mapPrismaDocument);
-    },
-    async findById(id) {
-      const document = await db.document.findUnique({
-        where: { id },
-        include: {
-          owner: {
-            select: { id: true, name: true, email: true },
-          },
-        },
-      });
+    return mapPrismaDocument(document);
+  }
 
-      return document ? mapPrismaDocument(document) : null;
-    },
-    async updateTitle({ id, title }) {
-      const document = await db.document.update({
-        where: { id },
-        data: { title },
-        include: {
-          owner: {
-            select: { id: true, name: true, email: true },
-          },
+  async listOwned({
+    ownerId,
+    cursor,
+    limit,
+  }: ListOwnedDocumentsInput): Promise<DocumentRecord[]> {
+    const documents = await this.db.document.findMany({
+      where: { ownerId },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      ...(cursor
+        ? {
+            cursor: { id: cursor },
+            skip: 1,
+          }
+        : {}),
+      take: limit,
+      include: {
+        owner: {
+          select: { id: true, name: true, email: true },
         },
-      });
+      },
+    });
 
-      return mapPrismaDocument(document);
-    },
-    async deleteById(id) {
-      await db.document.delete({ where: { id } });
-    },
-    async updateContentIfVersionMatches(input) {
-      const result = await db.document.updateMany({
-        where: {
-          id: input.id,
-          ownerId: input.ownerId,
-          version: input.expectedVersion,
-        },
-        data: {
-          contentJson: input.contentJson,
-          contentText: input.contentText,
-          version: { increment: 1 },
-        },
-      });
+    return documents.map(mapPrismaDocument);
+  }
 
-      return result.count;
-    },
-  };
+  async findById(id: string): Promise<DocumentRecord | null> {
+    const document = await this.db.document.findUnique({
+      where: { id },
+      include: {
+        owner: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    return document ? mapPrismaDocument(document) : null;
+  }
+
+  async updateTitle({
+    id,
+    title,
+  }: UpdateDocumentTitleInput): Promise<DocumentRecord> {
+    const document = await this.db.document.update({
+      where: { id },
+      data: { title },
+      include: {
+        owner: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    return mapPrismaDocument(document);
+  }
+
+  async deleteById(id: string): Promise<void> {
+    await this.db.document.delete({ where: { id } });
+  }
+
+  async updateContentIfVersionMatches(
+    input: UpdateDocumentContentInput,
+  ): Promise<number> {
+    const result = await this.db.document.updateMany({
+      where: {
+        id: input.id,
+        ownerId: input.ownerId,
+        version: input.expectedVersion,
+      },
+      data: {
+        contentJson: input.contentJson,
+        contentText: input.contentText,
+        version: { increment: 1 },
+      },
+    });
+
+    return result.count;
+  }
 }
-
-export const documentRepository = createPrismaDocumentRepository(prisma);

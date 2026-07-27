@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import type {
   DocumentRecord,
-  DocumentRepository,
+  DocumentRepositoryPort,
 } from "@/features/documents/server/document-repository-port";
-import { createDocumentService } from "@/features/documents/server/document-service";
+import { DocumentService } from "@/features/documents/server/document-service";
 import {
   ConflictError,
   ForbiddenError,
@@ -39,78 +39,93 @@ function record(overrides: Partial<DocumentRecord> = {}): DocumentRecord {
   };
 }
 
-function createMemoryRepository(seed: DocumentRecord[]) {
-  const documents = new Map(seed.map((item) => [item.id, item]));
-  let contentWrites = 0;
+class InMemoryDocumentRepository implements DocumentRepositoryPort {
+  private readonly documents: Map<string, DocumentRecord>;
+  contentWrites = 0;
 
-  const repository: DocumentRepository = {
-    async create(input) {
-      const created = record({
-        ...input,
-        owner,
-        version: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      documents.set(created.id, created);
-      return created;
-    },
-    async listOwned({ ownerId, limit }) {
-      return [...documents.values()]
-        .filter((item) => item.ownerId === ownerId)
-        .slice(0, limit);
-    },
-    async findById(id) {
-      return documents.get(id) ?? null;
-    },
-    async updateTitle({ id, title }) {
-      const current = documents.get(id)!;
-      const updated = { ...current, title, updatedAt: new Date() };
-      documents.set(id, updated);
-      return updated;
-    },
-    async deleteById(id) {
-      documents.delete(id);
-    },
-    async updateContentIfVersionMatches(input) {
-      const current = documents.get(input.id);
-      if (
-        !current ||
-        current.ownerId !== input.ownerId ||
-        current.version !== input.expectedVersion
-      ) {
-        return 0;
-      }
-      contentWrites += 1;
-      documents.set(input.id, {
-        ...current,
-        contentJson: input.contentJson,
-        contentText: input.contentText,
-        version: current.version + 1,
-        updatedAt: new Date(),
-      });
-      return 1;
-    },
-  };
+  constructor(seed: DocumentRecord[]) {
+    this.documents = new Map(seed.map((item) => [item.id, item]));
+  }
 
-  return {
-    repository,
-    get: (id: string) => documents.get(id),
-    get contentWrites() {
-      return contentWrites;
-    },
-  };
+  async create(
+    input: Parameters<DocumentRepositoryPort["create"]>[0],
+  ): Promise<DocumentRecord> {
+    const created = record({
+      ...input,
+      owner,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    this.documents.set(created.id, created);
+    return created;
+  }
+
+  async listOwned({
+    ownerId,
+    limit,
+  }: Parameters<DocumentRepositoryPort["listOwned"]>[0]) {
+    return [...this.documents.values()]
+      .filter((item) => item.ownerId === ownerId)
+      .slice(0, limit);
+  }
+
+  async findById(id: string) {
+    return this.documents.get(id) ?? null;
+  }
+
+  async updateTitle({
+    id,
+    title,
+  }: Parameters<DocumentRepositoryPort["updateTitle"]>[0]) {
+    const current = this.documents.get(id)!;
+    const updated = { ...current, title, updatedAt: new Date() };
+    this.documents.set(id, updated);
+    return updated;
+  }
+
+  async deleteById(id: string) {
+    this.documents.delete(id);
+  }
+
+  async updateContentIfVersionMatches(
+    input: Parameters<
+      DocumentRepositoryPort["updateContentIfVersionMatches"]
+    >[0],
+  ) {
+    const current = this.documents.get(input.id);
+    if (
+      !current ||
+      current.ownerId !== input.ownerId ||
+      current.version !== input.expectedVersion
+    ) {
+      return 0;
+    }
+    this.contentWrites += 1;
+    this.documents.set(input.id, {
+      ...current,
+      contentJson: input.contentJson,
+      contentText: input.contentText,
+      version: current.version + 1,
+      updatedAt: new Date(),
+    });
+    return 1;
+  }
+
+  get(id: string) {
+    return this.documents.get(id);
+  }
 }
 
 describe("document service", () => {
-  let memory: ReturnType<typeof createMemoryRepository>;
+  let repository: InMemoryDocumentRepository;
 
   beforeEach(() => {
-    memory = createMemoryRepository([record()]);
+    repository = new InMemoryDocumentRepository([record()]);
   });
 
   it("enforces ownership for reads, renames, and deletes", async () => {
-    const service = createDocumentService(memory.repository);
+    const service = new DocumentService(repository);
 
     await expect(
       service.getOwnedDocument({ ownerId: otherUserId, documentId }),
@@ -125,11 +140,11 @@ describe("document service", () => {
     await expect(
       service.deleteDocument({ ownerId: otherUserId, documentId }),
     ).rejects.toBeInstanceOf(ForbiddenError);
-    expect(memory.get(documentId)?.title).toBe("Draft");
+    expect(repository.get(documentId)?.title).toBe("Draft");
   });
 
   it("increments the version exactly once for a valid content save", async () => {
-    const service = createDocumentService(memory.repository);
+    const service = new DocumentService(repository);
     const content: JSONContent = {
       type: "doc",
       content: [
@@ -149,12 +164,12 @@ describe("document service", () => {
 
     expect(saved.version).toBe(2);
     expect(saved.excerpt).toBe("Saved once");
-    expect(memory.contentWrites).toBe(1);
+    expect(repository.contentWrites).toBe(1);
   });
 
   it("returns a conflict without overwriting a newer version", async () => {
-    memory = createMemoryRepository([record({ version: 3 })]);
-    const service = createDocumentService(memory.repository);
+    repository = new InMemoryDocumentRepository([record({ version: 3 })]);
+    const service = new DocumentService(repository);
 
     await expect(
       service.updateDocumentContent({
@@ -164,12 +179,12 @@ describe("document service", () => {
         content: initialContent,
       }),
     ).rejects.toBeInstanceOf(ConflictError);
-    expect(memory.get(documentId)?.version).toBe(3);
-    expect(memory.contentWrites).toBe(0);
+    expect(repository.get(documentId)?.version).toBe(3);
+    expect(repository.contentWrites).toBe(0);
   });
 
   it("does not write invalid content", async () => {
-    const service = createDocumentService(memory.repository);
+    const service = new DocumentService(repository);
 
     await expect(
       service.updateDocumentContent({
@@ -179,7 +194,7 @@ describe("document service", () => {
         content: { type: "doc", content: [{ type: "image" }] },
       }),
     ).rejects.toBeInstanceOf(ValidationError);
-    expect(memory.contentWrites).toBe(0);
-    expect(memory.get(documentId)?.version).toBe(1);
+    expect(repository.contentWrites).toBe(0);
+    expect(repository.get(documentId)?.version).toBe(1);
   });
 });

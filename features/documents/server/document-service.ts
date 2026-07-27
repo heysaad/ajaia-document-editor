@@ -11,8 +11,17 @@ import {
 } from "@/features/documents/server/document-title";
 import type {
   DocumentRecord,
-  DocumentRepository,
+  DocumentRepositoryPort,
 } from "@/features/documents/server/document-repository-port";
+import type {
+  CreateDocumentInput,
+  DeleteDocumentInput,
+  DocumentServicePort,
+  GetOwnedDocumentInput,
+  ListOwnedDocumentsInput,
+  RenameDocumentInput,
+  UpdateDocumentContentInput,
+} from "@/features/documents/server/document-service-port";
 import type {
   DocumentDetail,
   DocumentListResult,
@@ -44,7 +53,7 @@ function toDetail(document: DocumentRecord): DocumentDetail {
 }
 
 async function getAuthorizedDocumentOrThrow(
-  repository: DocumentRepository,
+  repository: DocumentRepositoryPort,
   documentId: string,
   viewerId: string,
 ) {
@@ -61,129 +70,118 @@ async function getAuthorizedDocumentOrThrow(
   return document;
 }
 
-export function createDocumentService(
-  repository: DocumentRepository,
-) {
-  return {
-    async createDocument(input: { ownerId: string; title?: string }) {
-      const contentJson = createEmptyDocumentContent();
-      const document = await repository.create({
-        id: crypto.randomUUID(),
-        ownerId: input.ownerId,
-        title: normalizeCreateTitle(input.title),
-        contentJson,
-        contentText: "",
+export class DocumentService implements DocumentServicePort {
+  constructor(private readonly repository: DocumentRepositoryPort) {}
+
+  async createDocument(input: CreateDocumentInput): Promise<DocumentDetail> {
+    const contentJson = createEmptyDocumentContent();
+    const document = await this.repository.create({
+      id: crypto.randomUUID(),
+      ownerId: input.ownerId,
+      title: normalizeCreateTitle(input.title),
+      contentJson,
+      contentText: "",
+    });
+
+    return toDetail(document);
+  }
+
+  async listOwnedDocuments(
+    input: ListOwnedDocumentsInput,
+  ): Promise<DocumentListResult> {
+    const documents = await this.repository.listOwned({
+      ownerId: input.ownerId,
+      cursor: input.cursor,
+      limit: input.limit + 1,
+    });
+
+    const hasMore = documents.length > input.limit;
+    const items = hasMore ? documents.slice(0, input.limit) : documents;
+
+    return {
+      items: items.map(toSummary),
+      nextCursor: hasMore ? items.at(-1)?.id ?? null : null,
+    };
+  }
+
+  async getOwnedDocument(input: GetOwnedDocumentInput): Promise<DocumentDetail> {
+    const document = await getAuthorizedDocumentOrThrow(
+      this.repository,
+      input.documentId,
+      input.ownerId,
+    );
+
+    return toDetail(document);
+  }
+
+  async renameDocument(input: RenameDocumentInput): Promise<DocumentDetail> {
+    await getAuthorizedDocumentOrThrow(
+      this.repository,
+      input.documentId,
+      input.ownerId,
+    );
+
+    const document = await this.repository.updateTitle({
+      id: input.documentId,
+      title: normalizeRenameTitle(input.title),
+    });
+
+    return toDetail(document);
+  }
+
+  async deleteDocument(input: DeleteDocumentInput): Promise<void> {
+    await getAuthorizedDocumentOrThrow(
+      this.repository,
+      input.documentId,
+      input.ownerId,
+    );
+
+    await this.repository.deleteById(input.documentId);
+  }
+
+  async updateDocumentContent(
+    input: UpdateDocumentContentInput,
+  ): Promise<DocumentDetail> {
+    const currentDocument = await getAuthorizedDocumentOrThrow(
+      this.repository,
+      input.documentId,
+      input.ownerId,
+    );
+    const parsedContent = parseDocumentContent(input.content);
+    const contentText = documentContentToPlainText(parsedContent);
+
+    const updatedCount = await this.repository.updateContentIfVersionMatches({
+      id: input.documentId,
+      ownerId: input.ownerId,
+      expectedVersion: input.expectedVersion,
+      contentJson: parsedContent,
+      contentText,
+    });
+
+    if (updatedCount === 0) {
+      const latestDocument = await getAuthorizedDocumentOrThrow(
+        this.repository,
+        input.documentId,
+        input.ownerId,
+      );
+
+      throw new ConflictError("A newer version of this document exists.", {
+        latestDocument: toDetail(latestDocument),
       });
+    }
 
-      return toDetail(document);
-    },
+    const savedDocument = await getAuthorizedDocumentOrThrow(
+      this.repository,
+      input.documentId,
+      input.ownerId,
+    );
 
-    async listOwnedDocuments(input: {
-      ownerId: string;
-      limit: number;
-      cursor?: string;
-    }): Promise<DocumentListResult> {
-      const documents = await repository.listOwned({
-        ownerId: input.ownerId,
-        cursor: input.cursor,
-        limit: input.limit + 1,
+    if (savedDocument.version !== currentDocument.version + 1) {
+      throw new ConflictError("Document version changed unexpectedly.", {
+        latestDocument: toDetail(savedDocument),
       });
+    }
 
-      const hasMore = documents.length > input.limit;
-      const items = hasMore ? documents.slice(0, input.limit) : documents;
-
-      return {
-        items: items.map(toSummary),
-        nextCursor: hasMore ? items.at(-1)?.id ?? null : null,
-      };
-    },
-
-    async getOwnedDocument(input: { ownerId: string; documentId: string }) {
-      const document = await getAuthorizedDocumentOrThrow(
-        repository,
-        input.documentId,
-        input.ownerId,
-      );
-
-      return toDetail(document);
-    },
-
-    async renameDocument(input: {
-      ownerId: string;
-      documentId: string;
-      title: string;
-    }) {
-      await getAuthorizedDocumentOrThrow(
-        repository,
-        input.documentId,
-        input.ownerId,
-      );
-
-      const document = await repository.updateTitle({
-        id: input.documentId,
-        title: normalizeRenameTitle(input.title),
-      });
-
-      return toDetail(document);
-    },
-
-    async deleteDocument(input: { ownerId: string; documentId: string }) {
-      await getAuthorizedDocumentOrThrow(
-        repository,
-        input.documentId,
-        input.ownerId,
-      );
-
-      await repository.deleteById(input.documentId);
-    },
-
-    async updateDocumentContent(input: {
-      ownerId: string;
-      documentId: string;
-      expectedVersion: number;
-      content: unknown;
-    }) {
-      const currentDocument = await getAuthorizedDocumentOrThrow(
-        repository,
-        input.documentId,
-        input.ownerId,
-      );
-      const parsedContent = parseDocumentContent(input.content);
-      const contentText = documentContentToPlainText(parsedContent);
-
-      const updatedCount = await repository.updateContentIfVersionMatches({
-        id: input.documentId,
-        ownerId: input.ownerId,
-        expectedVersion: input.expectedVersion,
-        contentJson: parsedContent,
-        contentText,
-      });
-
-      if (updatedCount === 0) {
-        const latestDocument = await getAuthorizedDocumentOrThrow(
-          repository,
-          input.documentId,
-          input.ownerId,
-        );
-
-        throw new ConflictError("A newer version of this document exists.", {
-          latestDocument: toDetail(latestDocument),
-        });
-      }
-
-      const savedDocument = await getAuthorizedDocumentOrThrow(
-        repository,
-        input.documentId,
-        input.ownerId,
-      );
-
-      if (savedDocument.version !== currentDocument.version + 1) {
-        throw new ConflictError("Document version changed unexpectedly.", {
-          latestDocument: toDetail(savedDocument),
-        });
-      }
-
-      return toDetail(savedDocument);
-    },
-  };
+    return toDetail(savedDocument);
+  }
 }
