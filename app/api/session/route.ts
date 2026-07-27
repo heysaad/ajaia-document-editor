@@ -3,21 +3,21 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { env } from "@/config/env";
-import { validateDemoUserId } from "@/features/auth/server/auth-session";
+import { validateSessionUserId } from "@/features/auth/server/auth-session";
 import { handleRoute, parseJsonBody } from "@/infra/http/route";
 
 export const runtime = "nodejs";
 
-const demoSessionSchema = z.object({
+const sessionSchema = z.object({
   userId: z.string().uuid(),
 });
 
 export const POST = handleRoute(async (request: Request) => {
-  const body = await parseJsonBody(request, demoSessionSchema);
-  const user = validateDemoUserId(body.userId);
+  const body = await parseJsonBody(request, sessionSchema);
+  const user = validateSessionUserId(body.userId);
   const cookieStore = await cookies();
 
-  cookieStore.set(env.DEMO_SESSION_COOKIE_NAME, user.id, {
+  cookieStore.set(env.SESSION_COOKIE_NAME, user.id, {
     httpOnly: true,
     sameSite: "lax",
     secure: env.NODE_ENV === "production",

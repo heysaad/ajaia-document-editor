@@ -15,7 +15,7 @@ export function DocumentsErrorState({ onRetry }: DocumentsErrorStateProps) {
         <div className="flex-1">
           <AlertTitle>Documents failed to load</AlertTitle>
           <AlertDescription>
-            Keep the error inline so the reviewer does not lose the surrounding context or keyboard position.
+            Keep the error inline so the user does not lose the surrounding context or keyboard position.
           </AlertDescription>
           {onRetry ? (
             <Button className="mt-4" size="sm" variant="outline" onClick={onRetry}>

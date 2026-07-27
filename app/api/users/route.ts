@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { getOptionalDemoUser } from "@/features/auth/server/auth-session";
-import { DEMO_USERS } from "@/features/auth/server/demo-users";
+import { getOptionalSessionUser } from "@/features/auth/server/auth-session";
+import { SEEDED_USERS } from "@/features/auth/server/seeded-users";
 import { handleRoute } from "@/infra/http/route";
 
 export const runtime = "nodejs";
 
 export const GET = handleRoute(async () => {
-  const currentUser = await getOptionalDemoUser();
-  return NextResponse.json({ users: DEMO_USERS, currentUser });
+  const currentUser = await getOptionalSessionUser();
+  return NextResponse.json({ users: SEEDED_USERS, currentUser });
 });

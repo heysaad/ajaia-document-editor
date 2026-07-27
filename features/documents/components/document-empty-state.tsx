@@ -26,7 +26,7 @@ export function DocumentEmptyState({
         </div>
         <CardTitle>No owned documents yet</CardTitle>
         <CardDescription>
-          Create a first draft for this demo user. The empty state keeps the
+          Create a first draft for this account. The empty state keeps the
           primary action in the same focus order as the list view.
         </CardDescription>
       </CardHeader>

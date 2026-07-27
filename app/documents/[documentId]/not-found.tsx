@@ -11,7 +11,7 @@ export default function NotFound() {
           <CardTitle>Document not found</CardTitle>
           <CardDescription>
             This document may have been removed, or it belongs to a different
-            demo user.
+            selected user.
           </CardDescription>
         </CardHeader>
         <CardContent>

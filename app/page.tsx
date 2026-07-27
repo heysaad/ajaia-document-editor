@@ -1,10 +1,10 @@
-import { getOptionalDemoUser } from "@/features/auth/server/auth-session";
-import { DEMO_USERS } from "@/features/auth/server/demo-users";
+import { getOptionalSessionUser } from "@/features/auth/server/auth-session";
+import { SEEDED_USERS } from "@/features/auth/server/seeded-users";
 import { documentService } from "@/features/documents/server/document-service.server";
 import { DocumentDashboard } from "@/features/documents/components/document-dashboard";
 
 export default async function Home() {
-  const viewer = await getOptionalDemoUser();
+  const viewer = await getOptionalSessionUser();
   const documents = viewer
     ? await documentService.listOwnedDocuments({
         ownerId: viewer.id,
@@ -15,7 +15,7 @@ export default async function Home() {
   return (
     <DocumentDashboard
       key={viewer?.id ?? "no-viewer"}
-      users={DEMO_USERS}
+      users={SEEDED_USERS}
       viewer={viewer}
       initialDocuments={documents.items}
     />

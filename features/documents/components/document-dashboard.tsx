@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DemoUserSwitcher } from "@/features/auth/components/demo-user-switcher";
+import { UserSwitcher } from "@/features/auth/components/user-switcher";
 import { fetchJson } from "@/lib/api-client";
 
 import { DocumentCard } from "./document-card";
@@ -28,14 +28,14 @@ type Viewer = {
   email: string;
 };
 
-type DemoUserOption = {
+type UserOption = {
   id: string;
   name: string;
   email: string;
 };
 
 type DocumentDashboardProps = {
-  users: DemoUserOption[];
+  users: UserOption[];
   viewer: Viewer | null;
   initialDocuments: DocumentSummary[];
 };
@@ -171,15 +171,15 @@ export function DocumentDashboard({
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-              <p className="text-sm text-muted-foreground">Current reviewer</p>
+              <p className="text-sm text-muted-foreground">Current account</p>
               <p className="mt-2 text-lg font-semibold text-foreground">
-                {viewer ? viewer.name : "Choose a demo user"}
+                {viewer ? viewer.name : "Choose an account"}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <DemoUserSwitcher
+        <UserSwitcher
           users={users}
           selectedUserId={viewer?.id ?? null}
           onUserChanged={() => {
@@ -213,7 +213,7 @@ export function DocumentDashboard({
           {!viewer ? (
             <Card>
               <CardContent className="p-6 text-sm leading-6 text-muted-foreground">
-                Select one of the seeded demo users to load their persisted
+                Select an account to load its persisted
                 documents and enable create, rename, delete, and editor actions.
               </CardContent>
             </Card>
@@ -265,7 +265,7 @@ export function DocumentDashboard({
             <Badge variant="secondary">Good to know</Badge>
             <CardTitle className="mt-3">A calm place to write</CardTitle>
             <CardDescription>
-              Your documents stay private to the selected demo user.
+              Your documents stay private to the selected account.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-6 text-muted-foreground">
@@ -275,7 +275,7 @@ export function DocumentDashboard({
                 Separate workspaces
               </div>
               <p className="mt-2">
-                Switch demo users to see how each person gets an independent
+                Switch accounts to access each person&apos;s independent
                 document library.
               </p>
             </div>

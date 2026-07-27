@@ -1,12 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 
-import { DEMO_USERS } from "../features/auth/server/demo-users";
+import { SEEDED_USERS } from "../features/auth/server/seeded-users";
 
 const prisma = new PrismaClient();
 
-export async function seedDemoUsers(client: PrismaClient = prisma) {
+export async function seedUsers(client: PrismaClient = prisma) {
   await Promise.all(
-    DEMO_USERS.map((user) =>
+    SEEDED_USERS.map((user) =>
       client.user.upsert({
         where: { id: user.id },
         update: {
@@ -20,7 +20,7 @@ export async function seedDemoUsers(client: PrismaClient = prisma) {
 }
 
 async function main() {
-  await seedDemoUsers();
+  await seedUsers();
 }
 
 main()

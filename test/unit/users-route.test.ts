@@ -2,21 +2,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { UnauthorizedError } from "@/lib/application-errors";
 
-const getOptionalDemoUserMock = vi.fn();
+const getOptionalSessionUserMock = vi.fn();
 
 vi.mock("@/features/auth/server/auth-session", () => ({
-  getOptionalDemoUser: getOptionalDemoUserMock,
+  getOptionalSessionUser: getOptionalSessionUserMock,
 }));
 
 const { GET } = await import("@/app/api/users/route");
 
 describe("GET /api/users", () => {
   afterEach(() => {
-    getOptionalDemoUserMock.mockReset();
+    getOptionalSessionUserMock.mockReset();
   });
 
   it("returns the seeded users with the current user", async () => {
-    getOptionalDemoUserMock.mockResolvedValue({
+    getOptionalSessionUserMock.mockResolvedValue({
       id: "771f2b30-3b0c-40d8-a96f-6c2ded9e70a1",
       name: "Maya Patel",
       email: "maya@example.com",
@@ -34,7 +34,7 @@ describe("GET /api/users", () => {
   });
 
   it("maps thrown auth errors through the shared route wrapper", async () => {
-    getOptionalDemoUserMock.mockRejectedValue(
+    getOptionalSessionUserMock.mockRejectedValue(
       new UnauthorizedError("Session missing."),
     );
 

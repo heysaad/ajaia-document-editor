@@ -16,23 +16,23 @@ import {
 import { fetchJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
-type DemoUserOption = {
+type UserOption = {
   id: string;
   name: string;
   email: string;
 };
 
-type DemoUserSwitcherProps = {
-  users: DemoUserOption[];
+type UserSwitcherProps = {
+  users: UserOption[];
   selectedUserId: string | null;
   onUserChanged?: (userId: string) => void;
 };
 
-export function DemoUserSwitcher({
+export function UserSwitcher({
   users,
   selectedUserId,
   onUserChanged,
-}: DemoUserSwitcherProps) {
+}: UserSwitcherProps) {
   const router = useRouter();
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -55,7 +55,7 @@ export function DemoUserSwitcher({
       });
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Could not switch demo users.",
+        error instanceof Error ? error.message : "Could not switch users.",
       );
     } finally {
       setPendingUserId(null);
@@ -67,13 +67,12 @@ export function DemoUserSwitcher({
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <Badge variant="warning">Demo identity</Badge>
-            <CardTitle className="mt-3">Reviewer switcher</CardTitle>
+            <Badge variant="warning">Active session</Badge>
+            <CardTitle className="mt-3">Account switcher</CardTitle>
           </div>
         </div>
         <CardDescription>
-          This stays clearly separate from production auth and makes user
-          ownership easy to verify.
+          Select the account whose private workspace you want to access.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

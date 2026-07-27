@@ -5,7 +5,7 @@ PostgreSQL, Prisma, shadcn-style UI components, and Tiptap.
 
 ## What is included
 
-- Three seeded demo users with an HTTP-only identity cookie.
+- Three seeded users with an HTTP-only session cookie.
 - Server-enforced document ownership.
 - Create, list, reopen, rename, and delete workflows.
 - Rich-text paragraphs, headings, bold, italic, underline, and lists.
@@ -13,9 +13,9 @@ PostgreSQL, Prisma, shadcn-style UI components, and Tiptap.
 - Optimistic concurrency that prevents stale edits from overwriting newer data.
 - Downloadable local JSON when a conflict needs manual recovery.
 
-The demo-user mechanism is intentionally not production authentication. It keeps
-the assessment focused on document behavior while preserving a replaceable
-identity boundary.
+The selectable-user session is isolated behind replaceable identity interfaces,
+so a production authentication provider can replace it without changing
+document business rules.
 
 ## Local setup
 
@@ -35,7 +35,7 @@ string for an empty PostgreSQL database:
 
 ```dotenv
 DATABASE_URL="postgresql://user:password@localhost:5432/ajai_docs?schema=public"
-DEMO_SESSION_COOKIE_NAME="ajai_demo_user"
+SESSION_COOKIE_NAME="ajai_session"
 ```
 
 Prepare the database and start the application:
@@ -47,7 +47,7 @@ npm run db:seed
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), select a demo user, and
+Open [http://localhost:3000](http://localhost:3000), select an account, and
 create a document. The seed command is idempotent and can be run repeatedly.
 
 ## Architecture

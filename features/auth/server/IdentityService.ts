@@ -1,4 +1,4 @@
-import type { DemoUser } from "@/features/auth/models";
+import type { SessionUser } from "@/features/auth/models";
 import type { IIdentityService } from "@/features/auth/server/IIdentityService";
 import type { IIdentitySessionStore } from "@/features/auth/server/IIdentitySessionStore";
 import type { IIdentityUserLookup } from "@/features/auth/server/IIdentityUserLookup";
@@ -10,7 +10,7 @@ export class IdentityService implements IIdentityService {
     private readonly userLookup: IIdentityUserLookup,
   ) {}
 
-  async resolveViewerIdentity(): Promise<DemoUser> {
+  async resolveViewerIdentity(): Promise<SessionUser> {
     const selectedUserId = await this.sessionStore.getSelectedUserId();
 
     if (!selectedUserId) {
@@ -20,13 +20,13 @@ export class IdentityService implements IIdentityService {
     const user = await this.userLookup.findById(selectedUserId);
 
     if (!user) {
-      throw new UnauthorizedError("The selected demo user is invalid.");
+      throw new UnauthorizedError("The selected user is invalid.");
     }
 
     return user;
   }
 
-  async resolveOptionalViewerIdentity(): Promise<DemoUser | null> {
+  async resolveOptionalViewerIdentity(): Promise<SessionUser | null> {
     const selectedUserId = await this.sessionStore.getSelectedUserId();
 
     if (!selectedUserId) {

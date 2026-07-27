@@ -1,6 +1,6 @@
-import type { DemoUser } from "@/features/auth/models";
+import type { SessionUser } from "@/features/auth/models";
 
-export const DEMO_USERS: DemoUser[] = [
+export const SEEDED_USERS: SessionUser[] = [
   {
     id: "771f2b30-3b0c-40d8-a96f-6c2ded9e70a1",
     name: "Maya Patel",

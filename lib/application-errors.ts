@@ -25,7 +25,7 @@ export class ValidationError extends AppError {
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message = "A demo user session is required.") {
+  constructor(message = "An authenticated user session is required.") {
     super(message, 401, "unauthorized");
   }
 }

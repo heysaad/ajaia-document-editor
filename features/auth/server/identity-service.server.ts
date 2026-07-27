@@ -8,7 +8,7 @@ import { PrismaIdentityUserLookup } from "@/features/auth/server/PrismaIdentityU
 import { prisma } from "@/infra/db/prisma";
 
 const sessionStore = new NextCookieIdentitySessionStore(
-  env.DEMO_SESSION_COOKIE_NAME,
+  env.SESSION_COOKIE_NAME,
 );
 const userLookup = new PrismaIdentityUserLookup(prisma);
 
