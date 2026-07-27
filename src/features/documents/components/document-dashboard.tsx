@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { FileUp, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Plus } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +14,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AccountCard } from "@/features/auth/components/account-card";
+import { DocumentImportDialog } from "@/features/document-import/components/document-import-dialog";
 import { fetchJson } from "@/lib/api-client";
 
-import { DocumentCard } from "./document-card";
 import { DocumentEmptyState } from "./document-empty-state";
-import type { DocumentDetail, DocumentSummary } from "../models";
+import { OwnedDocumentsTable } from "./owned-documents-table";
+import type {
+  DashboardDocumentSummary,
+  DocumentDashboardData,
+  DocumentDetail,
+  DocumentSummary,
+} from "../models";
 
 type Viewer = {
   id: string;
@@ -29,22 +35,26 @@ type Viewer = {
 
 type DocumentDashboardProps = {
   viewer: Viewer;
-  initialDocuments: DocumentSummary[];
+  initialDocuments?: DocumentSummary[];
+  initialData?: Partial<DocumentDashboardData>;
 };
 
 export function DocumentDashboard({
   viewer,
   initialDocuments,
+  initialData,
 }: DocumentDashboardProps) {
   const router = useRouter();
-  const [documents, setDocuments] = useState(initialDocuments);
+  const [documents, setDocuments] = useState<DashboardDocumentSummary[]>(
+    initialData?.owned?.items ?? initialDocuments ?? [],
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [isSavingTitleId, setIsSavingTitleId] = useState<string | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   async function handleCreateDocument() {
     setErrorMessage(null);
@@ -109,7 +119,6 @@ export function DocumentDashboard({
       setDocuments((current) =>
         current.filter((document) => document.id !== documentId),
       );
-      setPendingDeleteId(null);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Could not delete the document.",
@@ -120,160 +129,111 @@ export function DocumentDashboard({
   }
 
   return (
-    <main
-      id="main-content"
-      className="flex w-full flex-1 flex-col gap-8"
-    >
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_360px]">
-        <div className="space-y-6">
-          <Card className="overflow-hidden">
-            <CardHeader className="gap-5 border-b border-border/70 bg-[linear-gradient(135deg,rgba(87,91,232,0.11),transparent_65%)] sm:flex-row sm:items-end sm:justify-between">
-              <div className="space-y-3">
-                <Badge>Your workspace</Badge>
-                <div className="space-y-2">
-                  <CardTitle className="text-3xl tracking-tight sm:text-4xl">
-                    Pick up where you left off.
-                  </CardTitle>
-                  <CardDescription className="max-w-2xl text-base">
-                    Create a document, shape your ideas, and trust that every
-                    change is saved as you work.
-                  </CardDescription>
-                </div>
-              </div>
-              <Button
-                size="lg"
-                disabled={isCreating}
-                onClick={() => void handleCreateDocument()}
-              >
-                <Plus aria-hidden="true" />
-                {isCreating ? "Creating document..." : "Create document"}
-              </Button>
-            </CardHeader>
-            <CardContent className="grid gap-4 p-6 sm:grid-cols-3">
-              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                <p className="text-sm text-muted-foreground">Documents</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">
-                  {documents.length}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                <p className="text-sm text-muted-foreground">Signed-in account</p>
-                <p className="mt-2 truncate text-lg font-semibold text-foreground">
-                  {viewer.name}
-                </p>
-                <p className="truncate text-sm text-muted-foreground">
-                  {viewer.email}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                <p className="text-sm text-muted-foreground">Default save mode</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">
-                  Automatic
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-semibold text-foreground">
-                  Owned documents
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Create, rename, open, or remove documents from one place.
-                </p>
-              </div>
-              <Badge variant="outline">{documents.length} visible</Badge>
-            </div>
-
-            {errorMessage ? (
-              <Alert variant="destructive">
-                <AlertTitle>Action failed</AlertTitle>
-                <AlertDescription>{errorMessage}</AlertDescription>
-              </Alert>
-            ) : null}
-
-            {documents.length === 0 ? (
-              <DocumentEmptyState
-                isCreating={isCreating}
-                onCreate={() => void handleCreateDocument()}
-              />
-            ) : (
-              <div className="space-y-4">
-                {documents.map((document) => (
-                  <DocumentCard
-                    key={document.id}
-                    document={document}
-                    isRenaming={renameDocumentId === document.id}
-                    renameValue={renameValue}
-                    onRenameValueChange={setRenameValue}
-                    onRenameStart={(nextDocument) => {
-                      setRenameDocumentId(nextDocument.id);
-                      setRenameValue(nextDocument.title);
-                      setPendingDeleteId(null);
-                    }}
-                    onRenameCancel={() => {
-                      setRenameDocumentId(null);
-                      setRenameValue("");
-                    }}
-                    onRenameSave={(documentId) =>
-                      void handleRenameDocument(documentId)
-                    }
-                    onDeleteRequest={(documentId) => {
-                      setPendingDeleteId(documentId);
-                      setRenameDocumentId(null);
-                    }}
-                    pendingDeleteId={pendingDeleteId}
-                    onDeleteCancel={() => setPendingDeleteId(null)}
-                    onDeleteConfirm={(documentId) =>
-                      void handleDeleteDocument(documentId)
-                    }
-                    isDeleting={isDeletingId === document.id}
-                    isSavingTitle={isSavingTitleId === document.id}
-                  />
-                ))}
-              </div>
-            )}
+    <main id="main-content" className="flex w-full flex-1 flex-col gap-6">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-2">
+          <Badge variant="outline">Workspace</Badge>
+          <div className="space-y-1">
+            <h1 className="text-3xl font-semibold text-foreground">Documents</h1>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Create a draft or import a supported file, then continue editing
+              from a simple document list.
+            </p>
           </div>
         </div>
+        <div className="flex flex-wrap gap-2 lg:justify-end">
+          <Button
+            size="lg"
+            disabled={isCreating}
+            onClick={() => void handleCreateDocument()}
+          >
+            <Plus aria-hidden="true" />
+            {isCreating ? "Creating..." : "Add document"}
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => setIsImportDialogOpen(true)}
+          >
+            <FileUp aria-hidden="true" />
+            Import file
+          </Button>
+        </div>
+      </section>
 
-        <Card className="h-fit">
-          <CardHeader>
-            <Badge variant="secondary">Account</Badge>
-            <CardTitle className="mt-3">Signed-in user</CardTitle>
+      <AccountCard variant="inline" name={viewer.name} email={viewer.email} />
+
+      {errorMessage ? (
+        <Alert variant="destructive">
+          <AlertTitle>Action failed</AlertTitle>
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">
+              Owned by me
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Open, rename, delete, or continue editing from one table.
+            </p>
+          </div>
+          <Badge variant="outline">{documents.length} documents</Badge>
+        </div>
+
+        <Card>
+          <CardHeader className="border-b border-border/70 pb-4">
+            <CardTitle className="text-base">Document library</CardTitle>
             <CardDescription>
-              Your documents stay private to the selected account.
+              Supported imports: .txt and .md, up to 1 MiB.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-2xl border border-border/70 bg-background/85 p-4">
-              <p className="text-sm font-medium text-foreground">Name</p>
-              <p className="mt-1 text-sm text-muted-foreground">{viewer.name}</p>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-background/85 p-4">
-              <p className="text-sm font-medium text-foreground">Email</p>
-              <p className="mt-1 break-all text-sm text-muted-foreground">
-                {viewer.email}
-              </p>
-            </div>
-            {documents[0] ? (
-              <div className="rounded-2xl border border-border/70 bg-background/85 p-4">
-                <p className="text-sm font-medium text-foreground">Latest document</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {documents[0].title}
-                </p>
-                <Button asChild className="mt-4 w-full" variant="outline" size="sm">
-                  <Link href={`/documents/${documents[0].id}`}>
-                    Open latest document
-                    <ArrowRight aria-hidden="true" />
-                  </Link>
-                </Button>
+          <CardContent className="p-0">
+            {documents.length === 0 ? (
+              <div className="p-6">
+                <DocumentEmptyState
+                  isCreating={isCreating}
+                  onCreate={() => void handleCreateDocument()}
+                  onImportRequest={() => setIsImportDialogOpen(true)}
+                />
               </div>
-            ) : null}
+            ) : (
+              <OwnedDocumentsTable
+                documents={documents}
+                renameDocumentId={renameDocumentId}
+                renameValue={renameValue}
+                onRenameValueChange={setRenameValue}
+                onRenameStart={(nextDocument) => {
+                  setRenameDocumentId(nextDocument.id);
+                  setRenameValue(nextDocument.title);
+                }}
+                onRenameCancel={() => {
+                  setRenameDocumentId(null);
+                  setRenameValue("");
+                }}
+                onRenameSave={(documentId) =>
+                  void handleRenameDocument(documentId)
+                }
+                onDeleteConfirm={(documentId) =>
+                  void handleDeleteDocument(documentId)
+                }
+                isDeletingId={isDeletingId}
+                isSavingTitleId={isSavingTitleId}
+              />
+            )}
           </CardContent>
         </Card>
       </section>
+
+      <DocumentImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        onImported={(document) => {
+          router.push(`/documents/${document.id}`);
+        }}
+      />
     </main>
   );
 }
