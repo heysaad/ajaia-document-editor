@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ajai Docs
 
-## Getting Started
+A lightweight, full-stack rich-text document editor built with Next.js 16,
+PostgreSQL, Prisma, shadcn-style UI components, and Tiptap.
 
-First, run the development server:
+## What is included
+
+- Three seeded demo users with an HTTP-only identity cookie.
+- Server-enforced document ownership.
+- Create, list, reopen, rename, and delete workflows.
+- Rich-text paragraphs, headings, bold, italic, underline, and lists.
+- Debounced autosave with visible saved, saving, error, and conflict states.
+- Optimistic concurrency that prevents stale edits from overwriting newer data.
+- Downloadable local JSON when a conflict needs manual recovery.
+
+The demo-user mechanism is intentionally not production authentication. It keeps
+the assessment focused on document behavior while preserving a replaceable
+identity boundary.
+
+## Local setup
+
+Requirements:
+
+- Node.js 20 or newer.
+- PostgreSQL 15 or newer.
+
+From this `src/` directory:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy `.env.example` to `.env` and replace `DATABASE_URL` with a connection
+string for an empty PostgreSQL database:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```dotenv
+DATABASE_URL="postgresql://user:password@localhost:5432/ajai_docs?schema=public"
+DEMO_SESSION_COOKIE_NAME="ajai_demo_user"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Prepare the database and start the application:
 
-## Learn More
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000](http://localhost:3000), select a demo user, and
+create a document. The seed command is idempotent and can be run repeatedly.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Architecture
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Application code is grouped by feature. Document rules are independent of
+Next.js and Prisma:
 
-## Deploy on Vercel
+- `DocumentService` depends on `IDocumentRepository`.
+- `IdentityService` depends on session-store and user-lookup interfaces.
+- Prisma and Next.js cookies are production adapters composed in server-only
+  modules.
+- Route handlers only parse HTTP input, resolve identity, call a service, and
+  map errors.
+- Tiptap content validation and plain-text derivation are pure functions.
+- The editor depends on `DocumentSaveClientPort`; its fetch implementation can
+  be replaced by a fake in unit tests.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The database stores Tiptap JSON as the canonical document body, a derived text
+preview, and an integer version. Content updates use a conditional
+`id + ownerId + expectedVersion` write and increment the version atomically.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Validation limits
+
+- Titles: 120 characters.
+- List page size: 20 by default, 50 maximum.
+- Content JSON: 256 KiB.
+- Total text: 100,000 characters.
+- Nesting: 20 levels.
+- Only the nodes, marks, and attributes enabled by the editor are accepted.
+
+## Tests and quality checks
+
+```bash
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run test:integration
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+Integration and E2E tests require `DATABASE_URL` to reference a migrated,
+seeded test database. The repository integration suite creates and removes only
+its own fixed test records. The E2E suite creates a document through the UI and
+deletes it before finishing.
+
+## Deployment
+
+The intended deployment is Vercel with Neon PostgreSQL:
+
+1. Create a Neon database and set `DATABASE_URL` in Vercel.
+2. Run `npm run db:migrate` and `npm run db:seed` against the production
+   connection.
+3. Deploy the `src/` project with the standard `npm run build` command.
+
+File import, sharing, real authentication, automatic conflict merging, and
+real-time collaboration are intentionally deferred to later phases.
