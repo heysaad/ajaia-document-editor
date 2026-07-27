@@ -13,14 +13,25 @@ import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 import Underline from "@tiptap/extension-underline";
 import { useEditor } from "@tiptap/react";
+import { Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { fetchDocumentSaveClient } from "@/features/document-editing/client/FetchDocumentSaveClient";
 import type { IDocumentSaveClient } from "@/features/document-editing/client/IDocumentSaveClient";
 import { useDocumentAutosave } from "@/features/document-editing/client/use-document-autosave";
+import {
+  documentContentToMarkdown,
+  documentContentToPlainText,
+} from "@/features/document-editing/server/document-content";
 import { DocumentShareDialog } from "@/features/document-sharing/components/document-share-dialog";
 import type { DocumentDetail } from "@/features/documents/models";
 import { fetchJson } from "@/lib/api-client";
@@ -38,16 +49,74 @@ type DocumentEditorScreenProps = {
 
 const TITLE_SAVE_DELAY_MS = 800;
 
-function downloadDraft(title: string, content: JSONContent) {
-  const blob = new Blob([JSON.stringify(content, null, 2)], {
-    type: "application/json",
-  });
+function downloadTextFile(fileName: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const anchor = window.document.createElement("a");
   anchor.href = url;
-  anchor.download = `${title.trim() || "unsaved-document"}.json`;
+  anchor.download = fileName;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadDraft(title: string, content: JSONContent) {
+  downloadTextFile(
+    `${title.trim() || "unsaved-document"}.json`,
+    JSON.stringify(content, null, 2),
+    "application/json",
+  );
+}
+
+function downloadMarkdown(title: string, content: JSONContent) {
+  downloadTextFile(
+    `${title.trim() || "unsaved-document"}.md`,
+    documentContentToMarkdown(content),
+    "text/markdown;charset=utf-8",
+  );
+}
+
+function escapePdfText(value: string) {
+  return value.replace(/([\\()])/g, "\\$1");
+}
+
+function buildSimplePdf(title: string, content: JSONContent): string {
+  const text = documentContentToPlainText(content) || title.trim() || "Untitled document";
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const contentStream = lines
+    .map((line, index) => `BT /F1 12 Tf 50 ${760 - index * 14} Td (${escapePdfText(line)}) Tj ET`)
+    .join("\n");
+
+  const objects = [
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj",
+    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj",
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj",
+    `4 0 obj\n<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream\nendobj`,
+    "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj",
+  ];
+
+  const pdfChunks: string[] = ["%PDF-1.4\n"];
+  const offsets: number[] = [];
+
+  for (const object of objects) {
+    offsets.push(pdfChunks.join("").length);
+    pdfChunks.push(`${object}\n`);
+  }
+
+  const xrefOffset = pdfChunks.join("").length;
+  pdfChunks.push(`xref\n0 ${objects.length + 1}\n`);
+  pdfChunks.push("0000000000 65535 f \n");
+  for (const offset of offsets) {
+    pdfChunks.push(`${String(offset).padStart(10, "0")} 00000 n \n`);
+  }
+  pdfChunks.push(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`);
+  pdfChunks.push(`startxref\n${xrefOffset}\n%%EOF\n`);
+
+  return pdfChunks.join("");
+}
+
+function downloadPdf(title: string, content: JSONContent) {
+  const pdf = buildSimplePdf(title, content);
+  downloadTextFile(`${title.trim() || "unsaved-document"}.pdf`, pdf, "application/pdf");
 }
 
 export function DocumentEditorScreen({
@@ -208,16 +277,46 @@ export function DocumentEditorScreen({
         accessRoleLabel={accessRoleLabel}
         isTitleEditable={isOwner}
         actions={
-          isOwner ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setIsShareDialogOpen(true)}
-            >
-              Manage access
-            </Button>
-          ) : null
+          <div className="flex flex-wrap items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" size="sm" variant="outline">
+                  <Download aria-hidden="true" className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (editor) {
+                      downloadMarkdown(title, editor.getJSON());
+                    }
+                  }}
+                >
+                  Download Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (editor) {
+                      downloadPdf(title, editor.getJSON());
+                    }
+                  }}
+                >
+                  Download PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {isOwner ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsShareDialogOpen(true)}
+              >
+                Manage access
+              </Button>
+            ) : null}
+          </div>
         }
         onBack={() => {
           if (isOwner && title !== titleRef.current) {

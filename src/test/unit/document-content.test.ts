@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
 import {
+  documentContentToMarkdown,
   documentContentToPlainText,
   parseDocumentContent,
 } from "@/features/document-editing/server/document-content";
@@ -56,6 +57,12 @@ describe("document content", () => {
   it("derives each block of plain text exactly once", () => {
     expect(documentContentToPlainText(formattedDocument)).toBe(
       "Release notes\nReady for review\nFirst item\nSecond item",
+    );
+  });
+
+  it("serializes supported content as markdown", () => {
+    expect(documentContentToMarkdown(formattedDocument)).toBe(
+      "## Release notes\n\nReady for review\n\n- First item\n- Second item",
     );
   });
 

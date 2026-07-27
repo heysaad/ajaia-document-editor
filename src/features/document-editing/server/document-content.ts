@@ -176,6 +176,63 @@ export function documentContentToPlainText(content: JSONContent): string {
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+export function documentContentToMarkdown(content: JSONContent): string {
+  const blocks: string[] = [];
+
+  const visit = (node: JSONContent) => {
+    if (node.type === "heading") {
+      const text = collectInlineText(node);
+      if (text) {
+        const level = Math.min(Math.max(node.attrs?.level ?? 1, 1), 6);
+        blocks.push(`${"#".repeat(level)} ${text}`);
+      }
+      return;
+    }
+
+    if (node.type === "paragraph") {
+      const text = collectInlineText(node);
+      if (text) {
+        blocks.push(text);
+      }
+      return;
+    }
+
+    if (node.type === "bulletList" || node.type === "orderedList") {
+      const listItems: string[] = [];
+
+      for (const child of node.content ?? []) {
+        if (child.type !== "listItem") {
+          continue;
+        }
+
+        const itemText = (child.content ?? [])
+          .map((itemChild) => collectInlineText(itemChild))
+          .filter(Boolean)
+          .join(" ");
+
+        if (itemText) {
+          listItems.push(`${node.type === "orderedList" ? "1." : "-"} ${itemText}`);
+        }
+      }
+
+      if (listItems.length > 0) {
+        blocks.push(listItems.join("\n"));
+      }
+      return;
+    }
+
+    for (const child of node.content ?? []) {
+      visit(child);
+    }
+  };
+
+  for (const node of content.content ?? []) {
+    visit(node);
+  }
+
+  return blocks.join("\n\n").trim();
+}
+
 function collectInlineText(node: JSONContent) {
   const buffer: string[] = [];
 
