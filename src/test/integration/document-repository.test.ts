@@ -9,6 +9,7 @@ const repository = new PrismaDocumentRepository(prisma);
 const ownerId = "20bdfe9a-3614-481b-8610-4b07c5f2192d";
 const otherOwnerId = "8f81f1bf-d02e-4c9d-a35e-a2e758e49465";
 const sharedEditorId = "7a2f17ca-cc1e-42b8-ad9a-3344d9dc4352";
+const searchableUserIds = Array.from({ length: 12 }, () => crypto.randomUUID());
 const emptyContent: JSONContent = {
   type: "doc",
   content: [{ type: "paragraph" }],
@@ -29,6 +30,11 @@ describe("PrismaDocumentRepository", () => {
           name: "Shared Editor",
           email: "repo-editor@example.com",
         },
+        ...searchableUserIds.map((id, index) => ({
+          id,
+          name: `Repository Search ${String(index + 1).padStart(2, "0")}`,
+          email: `repository-search-${String(index + 1).padStart(2, "0")}@example.test`,
+        })),
       ],
       skipDuplicates: true,
     });
@@ -42,7 +48,11 @@ describe("PrismaDocumentRepository", () => {
 
   afterAll(async () => {
     await prisma.user.deleteMany({
-      where: { id: { in: [ownerId, otherOwnerId, sharedEditorId] } },
+      where: {
+        id: {
+          in: [ownerId, otherOwnerId, sharedEditorId, ...searchableUserIds],
+        },
+      },
     });
     await prisma.$disconnect();
   });
@@ -279,5 +289,74 @@ describe("PrismaDocumentRepository", () => {
     await expect(
       repository.deleteShare(document.id, sharedEditorId),
     ).resolves.toBe(0);
+  });
+
+  it("searches all registered users while excluding the owner and existing recipients", async () => {
+    const document = await repository.create({
+      id: "f8dc655a-8020-469f-89b0-509f5883ca20",
+      ownerId,
+      title: "User search",
+      contentJson: emptyContent,
+      contentText: "",
+    });
+    await repository.createShareIfMissing({
+      documentId: document.id,
+      userId: searchableUserIds[1],
+      role: "EDITOR",
+    });
+
+    const firstPage = await repository.listEligibleShareUsers({
+      documentId: document.id,
+      ownerId,
+      query: "repository SEARCH",
+      limit: 10,
+    });
+
+    expect(firstPage).toHaveLength(10);
+    expect(firstPage.map((user) => user.name)).toEqual([
+      "Repository Search 01",
+      "Repository Search 03",
+      "Repository Search 04",
+      "Repository Search 05",
+      "Repository Search 06",
+      "Repository Search 07",
+      "Repository Search 08",
+      "Repository Search 09",
+      "Repository Search 10",
+      "Repository Search 11",
+    ]);
+    expect(firstPage.map((user) => user.id)).not.toContain(ownerId);
+    expect(firstPage.map((user) => user.id)).not.toContain(searchableUserIds[1]);
+
+    await expect(
+      repository.listEligibleShareUsers({
+        documentId: document.id,
+        ownerId,
+        query: "SEARCH-12@EXAMPLE.TEST",
+        limit: 10,
+      }),
+    ).resolves.toMatchObject([
+      {
+        id: searchableUserIds[11],
+        email: "repository-search-12@example.test",
+      },
+    ]);
+
+    await expect(
+      repository.findShareTarget({ userId: searchableUserIds[11] }),
+    ).resolves.toMatchObject({
+      id: searchableUserIds[11],
+      name: "Repository Search 12",
+    });
+
+    const emptyQuery = await repository.listEligibleShareUsers({
+      documentId: document.id,
+      ownerId,
+      query: "",
+      limit: 10,
+    });
+    expect(emptyQuery).toHaveLength(10);
+    expect(emptyQuery.map((user) => user.id)).not.toContain(ownerId);
+    expect(emptyQuery.map((user) => user.id)).not.toContain(searchableUserIds[1]);
   });
 });

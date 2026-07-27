@@ -22,3 +22,7 @@ export const shareGrantSchema = z
 export const shareUserIdParamSchema = documentIdParamSchema.extend({
   userId: z.string().uuid(),
 });
+
+export const eligibleShareUsersSearchSchema = z.object({
+  q: z.string().trim().max(320).default(""),
+});

@@ -367,6 +367,8 @@ export class DocumentService implements IDocumentService {
       items: await this.repository.listEligibleShareUsers({
         documentId: input.documentId,
         ownerId: input.ownerId,
+        query: input.query,
+        limit: input.limit,
       }),
     };
   }

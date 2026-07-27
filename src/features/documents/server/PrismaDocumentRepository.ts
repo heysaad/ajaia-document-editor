@@ -29,7 +29,6 @@ import type {
   DocumentShareRole,
 } from "@/features/document-sharing/models";
 import type { IDocumentRepository } from "@/features/documents/server/IDocumentRepository";
-import { SEEDED_USERS } from "@/features/auth/server/seeded-users";
 
 type DocumentWithOwner = Prisma.DocumentGetPayload<{
   include: {
@@ -315,16 +314,26 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   async listEligibleShareUsers({
     documentId,
     ownerId,
+    query,
+    limit,
   }: ListEligibleShareUsersInput): Promise<ShareTargetRecord[]> {
     return this.db.user.findMany({
       where: {
         id: { not: ownerId },
-        email: { in: SEEDED_USERS.map((user) => user.email) },
         documentShares: {
           none: { documentId },
         },
+        ...(query
+          ? {
+              OR: [
+                { name: { contains: query, mode: "insensitive" } },
+                { email: { contains: query, mode: "insensitive" } },
+              ],
+            }
+          : {}),
       },
       orderBy: [{ name: "asc" }, { email: "asc" }],
+      take: limit,
       select: { id: true, name: true, email: true },
     });
   }
@@ -335,7 +344,6 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   }: FindShareTargetInput): Promise<ShareTargetRecord | null> {
     const target = await this.db.user.findFirst({
       where: {
-        email: { in: SEEDED_USERS.map((user) => user.email) },
         OR: [
           ...(userId ? [{ id: userId }] : []),
           ...(normalizedEmail ? [{ email: normalizedEmail }] : []),

@@ -72,6 +72,8 @@ export interface UpdateDocumentRecordContentInput {
 export interface ListEligibleShareUsersInput {
   documentId: string;
   ownerId: string;
+  query: string;
+  limit: number;
 }
 
 export interface FindShareTargetInput {
@@ -147,6 +149,8 @@ export interface ListDocumentSharesInput {
 export interface ListEligibleShareUsersRequest {
   ownerId: string;
   documentId: string;
+  query: string;
+  limit: number;
 }
 
 export interface GrantDocumentShareInput {
