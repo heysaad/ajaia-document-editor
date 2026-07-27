@@ -20,7 +20,7 @@ import { fetchJson } from "@/lib/api-client";
 
 import { DocumentCard } from "./document-card";
 import { DocumentEmptyState } from "./document-empty-state";
-import type { DocumentDetail, DocumentSummary } from "../types";
+import type { DocumentDetail, DocumentSummary } from "../models";
 
 type Viewer = {
   id: string;

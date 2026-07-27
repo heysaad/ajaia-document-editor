@@ -3,7 +3,7 @@
 import type { JSONContent } from "@tiptap/core";
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
-import type { DocumentDetail } from "@/features/documents/types";
+import type { DocumentDetail } from "@/features/documents/models";
 import { ApiClientError } from "@/lib/api-client";
 
 import type { DocumentSaveClientPort } from "./document-save-client";

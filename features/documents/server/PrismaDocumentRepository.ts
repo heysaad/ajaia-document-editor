@@ -5,11 +5,11 @@ import type { PrismaClient } from "@prisma/client";
 import type {
   CreateDocumentRecordInput,
   DocumentRecord,
-  DocumentRepositoryPort,
-  ListOwnedDocumentsInput,
-  UpdateDocumentContentInput,
-  UpdateDocumentTitleInput,
-} from "@/features/documents/server/document-repository-port";
+  ListOwnedDocumentRecordsInput,
+  UpdateDocumentRecordContentInput,
+  UpdateDocumentRecordTitleInput,
+} from "@/features/documents/models";
+import type { IDocumentRepository } from "@/features/documents/server/IDocumentRepository";
 
 function mapPrismaDocument(record: {
   id: string;
@@ -32,7 +32,7 @@ function mapPrismaDocument(record: {
   };
 }
 
-export class PrismaDocumentRepository implements DocumentRepositoryPort {
+export class PrismaDocumentRepository implements IDocumentRepository {
   constructor(private readonly db: PrismaClient) {}
 
   async create(input: CreateDocumentRecordInput): Promise<DocumentRecord> {
@@ -52,7 +52,7 @@ export class PrismaDocumentRepository implements DocumentRepositoryPort {
     ownerId,
     cursor,
     limit,
-  }: ListOwnedDocumentsInput): Promise<DocumentRecord[]> {
+  }: ListOwnedDocumentRecordsInput): Promise<DocumentRecord[]> {
     const documents = await this.db.document.findMany({
       where: { ownerId },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -89,7 +89,7 @@ export class PrismaDocumentRepository implements DocumentRepositoryPort {
   async updateTitle({
     id,
     title,
-  }: UpdateDocumentTitleInput): Promise<DocumentRecord> {
+  }: UpdateDocumentRecordTitleInput): Promise<DocumentRecord> {
     const document = await this.db.document.update({
       where: { id },
       data: { title },
@@ -108,7 +108,7 @@ export class PrismaDocumentRepository implements DocumentRepositoryPort {
   }
 
   async updateContentIfVersionMatches(
-    input: UpdateDocumentContentInput,
+    input: UpdateDocumentRecordContentInput,
   ): Promise<number> {
     const result = await this.db.document.updateMany({
       where: {

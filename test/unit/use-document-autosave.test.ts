@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DocumentSaveClientPort } from "@/features/document-editing/client/document-save-client";
 import { useDocumentAutosave } from "@/features/document-editing/client/use-document-autosave";
-import type { DocumentDetail } from "@/features/documents/types";
+import type { DocumentDetail } from "@/features/documents/models";
 
 const emptyContent: JSONContent = {
   type: "doc",

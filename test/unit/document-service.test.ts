@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import type {
   DocumentRecord,
-  DocumentRepositoryPort,
-} from "@/features/documents/server/document-repository-port";
-import { DocumentService } from "@/features/documents/server/document-service";
+} from "@/features/documents/models";
+import { DocumentService } from "@/features/documents/server/DocumentService";
+import type { IDocumentRepository } from "@/features/documents/server/IDocumentRepository";
 import {
   ConflictError,
   ForbiddenError,
@@ -39,7 +39,7 @@ function record(overrides: Partial<DocumentRecord> = {}): DocumentRecord {
   };
 }
 
-class InMemoryDocumentRepository implements DocumentRepositoryPort {
+class InMemoryDocumentRepository implements IDocumentRepository {
   private readonly documents: Map<string, DocumentRecord>;
   contentWrites = 0;
 
@@ -48,7 +48,7 @@ class InMemoryDocumentRepository implements DocumentRepositoryPort {
   }
 
   async create(
-    input: Parameters<DocumentRepositoryPort["create"]>[0],
+    input: Parameters<IDocumentRepository["create"]>[0],
   ): Promise<DocumentRecord> {
     const created = record({
       ...input,
@@ -64,7 +64,7 @@ class InMemoryDocumentRepository implements DocumentRepositoryPort {
   async listOwned({
     ownerId,
     limit,
-  }: Parameters<DocumentRepositoryPort["listOwned"]>[0]) {
+  }: Parameters<IDocumentRepository["listOwned"]>[0]) {
     return [...this.documents.values()]
       .filter((item) => item.ownerId === ownerId)
       .slice(0, limit);
@@ -77,7 +77,7 @@ class InMemoryDocumentRepository implements DocumentRepositoryPort {
   async updateTitle({
     id,
     title,
-  }: Parameters<DocumentRepositoryPort["updateTitle"]>[0]) {
+  }: Parameters<IDocumentRepository["updateTitle"]>[0]) {
     const current = this.documents.get(id)!;
     const updated = { ...current, title, updatedAt: new Date() };
     this.documents.set(id, updated);
@@ -90,7 +90,7 @@ class InMemoryDocumentRepository implements DocumentRepositoryPort {
 
   async updateContentIfVersionMatches(
     input: Parameters<
-      DocumentRepositoryPort["updateContentIfVersionMatches"]
+      IDocumentRepository["updateContentIfVersionMatches"]
     >[0],
   ) {
     const current = this.documents.get(input.id);

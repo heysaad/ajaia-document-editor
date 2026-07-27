@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 
-import type { DocumentDetail } from "@/features/documents/types";
+import type { DocumentDetail } from "@/features/documents/models";
 import { fetchJson } from "@/lib/api-client";
 
 export interface DocumentSaveClientPort {

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { DocumentCard } from "@/features/documents/components/document-card";
-import type { DocumentSummary } from "@/features/documents/types";
+import type { DocumentSummary } from "@/features/documents/models";
 
 const document: DocumentSummary = {
   id: "5c301301-2b15-47ec-ae55-b0f3ac3bcf51",

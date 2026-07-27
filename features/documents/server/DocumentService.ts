@@ -10,23 +10,19 @@ import {
   normalizeRenameTitle,
 } from "@/features/documents/server/document-title";
 import type {
-  DocumentRecord,
-  DocumentRepositoryPort,
-} from "@/features/documents/server/document-repository-port";
-import type {
   CreateDocumentInput,
   DeleteDocumentInput,
-  DocumentServicePort,
+  DocumentDetail,
+  DocumentListResult,
+  DocumentRecord,
+  DocumentSummary,
   GetOwnedDocumentInput,
   ListOwnedDocumentsInput,
   RenameDocumentInput,
   UpdateDocumentContentInput,
-} from "@/features/documents/server/document-service-port";
-import type {
-  DocumentDetail,
-  DocumentListResult,
-  DocumentSummary,
-} from "@/features/documents/types";
+} from "@/features/documents/models";
+import type { IDocumentRepository } from "@/features/documents/server/IDocumentRepository";
+import type { IDocumentService } from "@/features/documents/server/IDocumentService";
 import {
   ConflictError,
   ForbiddenError,
@@ -53,7 +49,7 @@ function toDetail(document: DocumentRecord): DocumentDetail {
 }
 
 async function getAuthorizedDocumentOrThrow(
-  repository: DocumentRepositoryPort,
+  repository: IDocumentRepository,
   documentId: string,
   viewerId: string,
 ) {
@@ -70,8 +66,8 @@ async function getAuthorizedDocumentOrThrow(
   return document;
 }
 
-export class DocumentService implements DocumentServicePort {
-  constructor(private readonly repository: DocumentRepositoryPort) {}
+export class DocumentService implements IDocumentService {
+  constructor(private readonly repository: IDocumentRepository) {}
 
   async createDocument(input: CreateDocumentInput): Promise<DocumentDetail> {
     const contentJson = createEmptyDocumentContent();

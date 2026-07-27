@@ -1,4 +1,4 @@
-import type { DocumentDetail } from "@/features/documents/types";
+import type { DocumentDetail } from "@/features/documents/models";
 
 export type SaveStatus = "saved" | "dirty" | "saving" | "error" | "conflict";
 
