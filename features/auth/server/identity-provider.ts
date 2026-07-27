@@ -1,42 +1,48 @@
 import type { DemoUser } from "@/features/auth/server/demo-users";
 import { UnauthorizedError } from "@/lib/application-errors";
 
-export type IdentitySessionStore = {
+export interface IdentitySessionStorePort {
   getSelectedUserId(): Promise<string | null>;
-};
-
-export type IdentityUserLookup = {
-  findById(id: string): Promise<DemoUser | null>;
-};
-
-export async function resolveViewerIdentity(
-  sessionStore: IdentitySessionStore,
-  userLookup: IdentityUserLookup,
-) {
-  const selectedUserId = await sessionStore.getSelectedUserId();
-
-  if (!selectedUserId) {
-    throw new UnauthorizedError();
-  }
-
-  const user = await userLookup.findById(selectedUserId);
-
-  if (!user) {
-    throw new UnauthorizedError("The selected demo user is invalid.");
-  }
-
-  return user;
 }
 
-export async function resolveOptionalViewerIdentity(
-  sessionStore: IdentitySessionStore,
-  userLookup: IdentityUserLookup,
-) {
-  const selectedUserId = await sessionStore.getSelectedUserId();
+export interface IdentityUserLookupPort {
+  findById(id: string): Promise<DemoUser | null>;
+}
 
-  if (!selectedUserId) {
-    return null;
+export interface IdentityServicePort {
+  resolveViewerIdentity(): Promise<DemoUser>;
+  resolveOptionalViewerIdentity(): Promise<DemoUser | null>;
+}
+
+export class IdentityService implements IdentityServicePort {
+  constructor(
+    private readonly sessionStore: IdentitySessionStorePort,
+    private readonly userLookup: IdentityUserLookupPort,
+  ) {}
+
+  async resolveViewerIdentity(): Promise<DemoUser> {
+    const selectedUserId = await this.sessionStore.getSelectedUserId();
+
+    if (!selectedUserId) {
+      throw new UnauthorizedError();
+    }
+
+    const user = await this.userLookup.findById(selectedUserId);
+
+    if (!user) {
+      throw new UnauthorizedError("The selected demo user is invalid.");
+    }
+
+    return user;
   }
 
-  return userLookup.findById(selectedUserId);
+  async resolveOptionalViewerIdentity(): Promise<DemoUser | null> {
+    const selectedUserId = await this.sessionStore.getSelectedUserId();
+
+    if (!selectedUserId) {
+      return null;
+    }
+
+    return this.userLookup.findById(selectedUserId);
+  }
 }

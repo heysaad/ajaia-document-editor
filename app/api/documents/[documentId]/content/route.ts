@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  nextCookieSessionStore,
-  prismaIdentityUserLookup,
-} from "@/features/auth/server/identity-adapters";
-import { resolveViewerIdentity } from "@/features/auth/server/identity-provider";
+import { identityService } from "@/features/auth/server/identity-service.server";
 import {
   documentIdParamSchema,
   updateDocumentContentSchema,
@@ -22,10 +18,7 @@ export async function PUT(
   context: DocumentContentRouteContext,
 ) {
   try {
-    const viewer = await resolveViewerIdentity(
-      nextCookieSessionStore,
-      prismaIdentityUserLookup,
-    );
+    const viewer = await identityService.resolveViewerIdentity();
     const params = documentIdParamSchema.parse(await context.params);
     const body = await parseJsonBody(request, updateDocumentContentSchema);
     const document = await documentService.updateDocumentContent({

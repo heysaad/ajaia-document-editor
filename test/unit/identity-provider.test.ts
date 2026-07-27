@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  resolveOptionalViewerIdentity,
-  resolveViewerIdentity,
-  type IdentitySessionStore,
-  type IdentityUserLookup,
+  IdentityService,
+  type IdentitySessionStorePort,
+  type IdentityUserLookupPort,
 } from "@/features/auth/server/identity-provider";
 import { UnauthorizedError } from "@/lib/application-errors";
 
@@ -14,33 +13,58 @@ const user = {
   email: "maya@example.com",
 };
 
-function session(userId: string | null): IdentitySessionStore {
-  return { getSelectedUserId: async () => userId };
+class StubIdentitySessionStore implements IdentitySessionStorePort {
+  constructor(private readonly userId: string | null) {}
+
+  async getSelectedUserId() {
+    return this.userId;
+  }
 }
 
-function lookup(found = true): IdentityUserLookup {
-  return { findById: async () => (found ? user : null) };
+class StubIdentityUserLookup implements IdentityUserLookupPort {
+  constructor(private readonly found = true) {}
+
+  async findById() {
+    return this.found ? user : null;
+  }
 }
 
 describe("viewer identity", () => {
   it("resolves a selected known user", async () => {
-    await expect(resolveViewerIdentity(session(user.id), lookup())).resolves.toEqual(
-      user,
+    const service = new IdentityService(
+      new StubIdentitySessionStore(user.id),
+      new StubIdentityUserLookup(),
     );
+
+    await expect(service.resolveViewerIdentity()).resolves.toEqual(user);
   });
 
   it("rejects a missing or unknown selection", async () => {
-    await expect(resolveViewerIdentity(session(null), lookup())).rejects.toBeInstanceOf(
-      UnauthorizedError,
+    const missingSessionService = new IdentityService(
+      new StubIdentitySessionStore(null),
+      new StubIdentityUserLookup(),
     );
+    const unknownUserService = new IdentityService(
+      new StubIdentitySessionStore(user.id),
+      new StubIdentityUserLookup(false),
+    );
+
     await expect(
-      resolveViewerIdentity(session(user.id), lookup(false)),
+      missingSessionService.resolveViewerIdentity(),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
+    await expect(
+      unknownUserService.resolveViewerIdentity(),
     ).rejects.toBeInstanceOf(UnauthorizedError);
   });
 
   it("allows an absent optional identity", async () => {
+    const service = new IdentityService(
+      new StubIdentitySessionStore(null),
+      new StubIdentityUserLookup(),
+    );
+
     await expect(
-      resolveOptionalViewerIdentity(session(null), lookup()),
+      service.resolveOptionalViewerIdentity(),
     ).resolves.toBeNull();
   });
 });

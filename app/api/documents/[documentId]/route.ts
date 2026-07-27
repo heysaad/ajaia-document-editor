@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  nextCookieSessionStore,
-  prismaIdentityUserLookup,
-} from "@/features/auth/server/identity-adapters";
-import { resolveViewerIdentity } from "@/features/auth/server/identity-provider";
+import { identityService } from "@/features/auth/server/identity-service.server";
 import {
   documentIdParamSchema,
   renameDocumentSchema,
@@ -22,10 +18,7 @@ export async function GET(
   context: DocumentRouteContext,
 ) {
   try {
-    const viewer = await resolveViewerIdentity(
-      nextCookieSessionStore,
-      prismaIdentityUserLookup,
-    );
+    const viewer = await identityService.resolveViewerIdentity();
     const params = documentIdParamSchema.parse(await context.params);
     const document = await documentService.getOwnedDocument({
       ownerId: viewer.id,
@@ -43,10 +36,7 @@ export async function PATCH(
   context: DocumentRouteContext,
 ) {
   try {
-    const viewer = await resolveViewerIdentity(
-      nextCookieSessionStore,
-      prismaIdentityUserLookup,
-    );
+    const viewer = await identityService.resolveViewerIdentity();
     const params = documentIdParamSchema.parse(await context.params);
     const body = await parseJsonBody(request, renameDocumentSchema);
     const document = await documentService.renameDocument({
@@ -66,10 +56,7 @@ export async function DELETE(
   context: DocumentRouteContext,
 ) {
   try {
-    const viewer = await resolveViewerIdentity(
-      nextCookieSessionStore,
-      prismaIdentityUserLookup,
-    );
+    const viewer = await identityService.resolveViewerIdentity();
     const params = documentIdParamSchema.parse(await context.params);
     await documentService.deleteDocument({
       ownerId: viewer.id,

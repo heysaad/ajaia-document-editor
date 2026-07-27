@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-  nextCookieSessionStore,
-  prismaIdentityUserLookup,
-} from "@/features/auth/server/identity-adapters";
-import { resolveViewerIdentity } from "@/features/auth/server/identity-provider";
+import { identityService } from "@/features/auth/server/identity-service.server";
 import {
   createDocumentSchema,
   listDocumentsSearchSchema,
@@ -16,10 +12,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
-    const viewer = await resolveViewerIdentity(
-      nextCookieSessionStore,
-      prismaIdentityUserLookup,
-    );
+    const viewer = await identityService.resolveViewerIdentity();
     const query = listDocumentsSearchSchema.parse({
       cursor: request.nextUrl.searchParams.get("cursor") ?? undefined,
       limit: request.nextUrl.searchParams.get("limit") ?? undefined,
@@ -39,10 +32,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   try {
-    const viewer = await resolveViewerIdentity(
-      nextCookieSessionStore,
-      prismaIdentityUserLookup,
-    );
+    const viewer = await identityService.resolveViewerIdentity();
     const body = await parseJsonBody(request, createDocumentSchema);
     const document = await documentService.createDocument({
       ownerId: viewer.id,
