@@ -183,7 +183,8 @@ class InMemoryDocumentRepository implements IDocumentRepository {
     );
   }
 
-  async listEligibleShareUsers(_input: ListEligibleShareUsersInput) {
+  async listEligibleShareUsers(unusedInput: ListEligibleShareUsersInput) {
+    void unusedInput;
     return [sharedEditor, unrelatedUser] satisfies ShareTargetRecord[];
   }
 

@@ -17,15 +17,16 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  fetchDocumentSaveClient,
-} from "@/features/document-editing/client/FetchDocumentSaveClient";
+import { Button } from "@/components/ui/button";
+import { fetchDocumentSaveClient } from "@/features/document-editing/client/FetchDocumentSaveClient";
 import type { IDocumentSaveClient } from "@/features/document-editing/client/IDocumentSaveClient";
 import { useDocumentAutosave } from "@/features/document-editing/client/use-document-autosave";
+import { DocumentShareDialog } from "@/features/document-sharing/components/document-share-dialog";
 import type { DocumentDetail } from "@/features/documents/models";
 import { fetchJson } from "@/lib/api-client";
 
 import { ConflictBanner } from "./conflict-banner";
+import { DocumentAccessRevokedAlert } from "./document-access-revoked-alert";
 import { DocumentEditorHeader } from "./document-editor-header";
 import { EditorCanvas } from "./editor-canvas";
 import { FormattingToolbar } from "./formatting-toolbar";
@@ -54,9 +55,12 @@ export function DocumentEditorScreen({
   saveClient = fetchDocumentSaveClient,
 }: DocumentEditorScreenProps) {
   const router = useRouter();
+  const accessRole = document.accessRole ?? "OWNER";
+  const isOwner = accessRole === "OWNER";
   const [title, setTitle] = useState(document.title);
   const [titleError, setTitleError] = useState<string | null>(null);
   const [isTitleSaving, setIsTitleSaving] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const titleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRequestRef = useRef<AbortController | null>(null);
   const titleSequenceRef = useRef(0);
@@ -73,6 +77,7 @@ export function DocumentEditorScreen({
   const editor = useEditor({
     immediatelyRender: false,
     shouldRerenderOnTransaction: true,
+    editable: true,
     extensions: [
       TiptapDocument,
       Paragraph,
@@ -101,6 +106,10 @@ export function DocumentEditorScreen({
 
   const persistTitle = useCallback(
     async (nextTitle: string) => {
+      if (!isOwner) {
+        return;
+      }
+
       const normalized = nextTitle.replace(/\s+/g, " ").trim();
       if (!normalized) {
         setTitleError("Document titles cannot be empty.");
@@ -124,7 +133,9 @@ export function DocumentEditorScreen({
             signal: controller.signal,
           },
         );
-        if (sequence !== titleSequenceRef.current) return;
+        if (sequence !== titleSequenceRef.current) {
+          return;
+        }
         titleRef.current = saved.title;
         setTitle(saved.title);
       } catch (error) {
@@ -135,16 +146,20 @@ export function DocumentEditorScreen({
           error instanceof Error ? error.message : "The title could not be saved.",
         );
       } finally {
-        if (sequence === titleSequenceRef.current) setIsTitleSaving(false);
+        if (sequence === titleSequenceRef.current) {
+          setIsTitleSaving(false);
+        }
       }
     },
-    [document.id],
+    [document.id, isOwner],
   );
 
   function handleTitleChange(nextTitle: string) {
     setTitle(nextTitle);
     setTitleError(null);
-    if (titleTimerRef.current) clearTimeout(titleTimerRef.current);
+    if (titleTimerRef.current) {
+      clearTimeout(titleTimerRef.current);
+    }
     titleTimerRef.current = setTimeout(() => {
       void persistTitle(nextTitle);
     }, TITLE_SAVE_DELAY_MS);
@@ -152,13 +167,21 @@ export function DocumentEditorScreen({
 
   useEffect(
     () => () => {
-      if (titleTimerRef.current) clearTimeout(titleTimerRef.current);
+      if (titleTimerRef.current) {
+        clearTimeout(titleTimerRef.current);
+      }
       titleRequestRef.current?.abort();
     },
     [],
   );
 
-  const ownerLabel = `${document.owner.name} · owner`;
+  const isAccessRevoked = autosave.state.status === "revoked";
+  const ownerLabel = `Owner: ${document.owner.name}`;
+  const accessRoleLabel = isOwner ? "Owner access" : "Shared editor";
+
+  useEffect(() => {
+    editor?.setEditable(!isAccessRevoked);
+  }, [editor, isAccessRevoked]);
 
   return (
     <main
@@ -169,25 +192,57 @@ export function DocumentEditorScreen({
         title={title}
         onTitleChange={handleTitleChange}
         onTitleBlur={() => {
-          if (titleTimerRef.current) clearTimeout(titleTimerRef.current);
-          if (title !== titleRef.current) void persistTitle(title);
+          if (titleTimerRef.current) {
+            clearTimeout(titleTimerRef.current);
+          }
+          if (isOwner && title !== titleRef.current) {
+            void persistTitle(title);
+          }
         }}
-        saveState={isTitleSaving ? "saving" : autosave.state.status}
+        saveState={
+          isTitleSaving && !isAccessRevoked ? "saving" : autosave.state.status
+        }
         lastSavedAt={autosave.state.savedAt}
         version={autosave.state.version}
         ownerLabel={ownerLabel}
+        accessRoleLabel={accessRoleLabel}
+        isTitleEditable={isOwner}
+        actions={
+          isOwner ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setIsShareDialogOpen(true)}
+            >
+              Manage access
+            </Button>
+          ) : null
+        }
         onBack={() => {
-          if (title !== titleRef.current) void persistTitle(title);
-          autosave.flush();
+          if (isOwner && title !== titleRef.current) {
+            void persistTitle(title);
+          }
+          void autosave.flush();
           router.push("/");
         }}
       />
 
-      {titleError ? (
+      {titleError && isOwner ? (
         <Alert variant="destructive">
           <AlertTitle>Title not saved</AlertTitle>
           <AlertDescription>{titleError}</AlertDescription>
         </Alert>
+      ) : null}
+
+      {isAccessRevoked ? (
+        <DocumentAccessRevokedAlert
+          message={
+            autosave.state.message ??
+            "Your access to this document is no longer available."
+          }
+          onBack={() => router.push("/")}
+        />
       ) : null}
 
       {autosave.state.status === "error" ? (
@@ -206,19 +261,32 @@ export function DocumentEditorScreen({
           mode="conflict"
           onPrimaryAction={() => {
             const latest = autosave.loadServerCopy();
-            if (!latest) return;
+            if (!latest) {
+              return;
+            }
             editor?.commands.setContent(latest.contentJson);
             titleRef.current = latest.title;
             setTitle(latest.title);
           }}
           onSecondaryAction={() => {
-            if (editor) downloadDraft(title, editor.getJSON());
+            if (editor) {
+              downloadDraft(title, editor.getJSON());
+            }
           }}
         />
       ) : null}
 
-      <FormattingToolbar editor={editor} />
+      <FormattingToolbar editor={editor} disabled={isAccessRevoked} />
       <EditorCanvas editor={editor} />
+
+      {isOwner ? (
+        <DocumentShareDialog
+          open={isShareDialogOpen}
+          onOpenChange={setIsShareDialogOpen}
+          documentId={document.id}
+          documentTitle={document.title}
+        />
+      ) : null}
     </main>
   );
 }

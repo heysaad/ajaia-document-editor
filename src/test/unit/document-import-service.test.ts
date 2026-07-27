@@ -69,7 +69,8 @@ class InMemoryDocumentRepository implements IDocumentRepository {
     return [];
   }
 
-  async listShared(_input: ListSharedDocumentRecordsInput) {
+  async listShared(unusedInput: ListSharedDocumentRecordsInput) {
+    void unusedInput;
     return [];
   }
 
@@ -109,20 +110,23 @@ class InMemoryDocumentRepository implements IDocumentRepository {
   }
 
   async listEligibleShareUsers(
-    _input: ListEligibleShareUsersInput,
+    unusedInput: ListEligibleShareUsersInput,
   ): Promise<ShareTargetRecord[]> {
+    void unusedInput;
     return [];
   }
 
   async findShareTarget(
-    _input: FindShareTargetInput,
+    unusedInput: FindShareTargetInput,
   ): Promise<ShareTargetRecord | null> {
+    void unusedInput;
     return null;
   }
 
   async createShareIfMissing(
-    _input: CreateDocumentShareRecordInput,
+    unusedInput: CreateDocumentShareRecordInput,
   ): Promise<CreateDocumentShareResult> {
+    void unusedInput;
     throw new Error("Not implemented in this test.");
   }
 

@@ -20,10 +20,9 @@ export default async function Home() {
   });
 
   return (
-    <AuthenticatedShell viewer={viewer}>
+    <AuthenticatedShell viewer={viewer} showAccountMenu={false}>
       <DocumentDashboard
         key={viewer.id}
-        viewer={viewer}
         initialData={documents}
       />
     </AuthenticatedShell>

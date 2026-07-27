@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DocumentDashboard } from "@/features/documents/components/document-dashboard";
@@ -8,7 +9,6 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   replace: vi.fn(),
   refresh: vi.fn(),
-  signOut: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -18,18 +18,6 @@ vi.mock("next/navigation", () => ({
     refresh: mocks.refresh,
   }),
 }));
-
-vi.mock("@/features/auth/client/auth-client", () => ({
-  authClient: {
-    signOut: mocks.signOut,
-  },
-}));
-
-const viewer = {
-  id: "771f2b30-3b0c-40d8-a96f-6c2ded9e70a1",
-  name: "Maya Patel",
-  email: "maya@example.com",
-};
 
 const documents: DocumentSummary[] = [
   {
@@ -48,7 +36,7 @@ describe("DocumentDashboard", () => {
 
   it("renders the requested table-style homepage without dashboard stats", () => {
     render(
-      <DocumentDashboard viewer={viewer} initialDocuments={documents} />,
+      <DocumentDashboard initialDocuments={documents} />,
     );
 
     expect(
@@ -62,10 +50,12 @@ describe("DocumentDashboard", () => {
     expect(screen.getByText("Owned by me")).toBeVisible();
     expect(screen.queryByText("Default save mode")).not.toBeInTheDocument();
     expect(screen.queryByText("Pick up where you left off.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Maya Patel")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
   });
 
   it("keeps create and import actions visible in the empty state", () => {
-    render(<DocumentDashboard viewer={viewer} initialDocuments={[]} />);
+    render(<DocumentDashboard initialDocuments={[]} />);
 
     expect(screen.getByText("No owned documents yet")).toBeVisible();
     expect(
@@ -74,5 +64,20 @@ describe("DocumentDashboard", () => {
     expect(
       screen.getAllByRole("button", { name: "Import file" }).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("groups document actions in a three-dot menu", async () => {
+    const user = userEvent.setup();
+
+    render(<DocumentDashboard initialDocuments={documents} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Open actions for Release brief" }),
+    );
+
+    expect(screen.getByRole("menuitem", { name: "Open" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Rename" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Share" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeVisible();
   });
 });

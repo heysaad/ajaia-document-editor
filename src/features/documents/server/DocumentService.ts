@@ -387,7 +387,7 @@ export class DocumentService implements IDocumentService {
     });
 
     if (!target) {
-      throw new ValidationError("The selected reviewer cannot be granted access.", {
+      throw new ValidationError("The selected user cannot be granted access.", {
         field: "shareTarget",
         reason: "invalid_share_target",
       });

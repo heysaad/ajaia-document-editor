@@ -171,8 +171,8 @@ export interface DocumentSummary {
 }
 
 export interface DashboardDocumentSummary extends DocumentSummary {
-  accessRole?: DocumentAccessRole;
-  owner?: DocumentOwnerRecord;
+  accessRole: DocumentAccessRole;
+  owner: DocumentOwnerRecord;
 }
 
 export interface DocumentListResult {
@@ -194,7 +194,7 @@ export interface DocumentDetail extends DocumentSummary {
   contentJson: JSONContent;
   createdAt: string;
   owner: DocumentOwnerRecord;
-  accessRole?: DocumentAccessRole;
+  accessRole: DocumentAccessRole;
 }
 
 export interface CreateDocumentShareResult {

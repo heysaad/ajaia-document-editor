@@ -6,6 +6,8 @@ export interface DocumentShareUserRecord {
   email: string;
 }
 
+export type ShareTargetRecord = DocumentShareUserRecord;
+
 export interface DocumentShareRecord {
   documentId: string;
   userId: string;
@@ -14,8 +16,6 @@ export interface DocumentShareRecord {
   updatedAt: Date;
   user: DocumentShareUserRecord;
 }
-
-export interface ShareTargetRecord extends DocumentShareUserRecord {}
 
 export interface DocumentShareSummary {
   user: DocumentShareUserRecord;

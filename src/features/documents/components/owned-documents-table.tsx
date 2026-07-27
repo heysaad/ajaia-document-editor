@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PencilLine, Share2, Trash2 } from "lucide-react";
+import { MoreHorizontal, PencilLine, Share2, Trash2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -15,6 +15,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { DashboardDocumentSummary } from "@/features/documents/models";
 
 type OwnedDocumentsTableProps = {
@@ -134,60 +141,70 @@ export function OwnedDocumentsTable({
                         </Button>
                       </>
                     ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onRenameStart(document)}
-                        >
-                          <PencilLine aria-hidden="true" />
-                          Rename
-                        </Button>
-                        <Button size="sm" variant="ghost" asChild>
-                          <Link href={`/documents/${document.id}`}>Open</Link>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onShareRequest(document)}
-                        >
-                          <Share2 aria-hidden="true" />
-                          Share
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={isDeleting}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 aria-hidden="true" />
-                              Delete
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Delete {document.title}?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This permanently removes the document from your
-                                owned list.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Keep document</AlertDialogCancel>
-                              <AlertDialogAction
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="cursor-pointer"
+                            aria-label={`Open actions for ${document.title}`}
+                          >
+                            <MoreHorizontal aria-hidden="true" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-40 rounded-xl p-1">
+                          <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
+                            <Link href={`/documents/${document.id}`}>Open</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer rounded-lg"
+                            onSelect={() => onRenameStart(document)}
+                          >
+                            <PencilLine aria-hidden="true" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer rounded-lg"
+                            onSelect={() => onShareRequest(document)}
+                          >
+                            <Share2 aria-hidden="true" />
+                            Share
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem
+                                className="cursor-pointer rounded-lg text-destructive focus:bg-destructive/10 focus:text-destructive"
                                 disabled={isDeleting}
-                                onClick={() => onDeleteConfirm(document.id)}
                               >
-                                {isDeleting ? "Deleting..." : "Confirm delete"}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </>
+                                <Trash2 aria-hidden="true" />
+                                Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Delete {document.title}?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This permanently removes the document from your
+                                  owned list.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Keep document</AlertDialogCancel>
+                                <AlertDialogAction
+                                  disabled={isDeleting}
+                                  onClick={() => onDeleteConfirm(document.id)}
+                                >
+                                  {isDeleting ? "Deleting..." : "Confirm delete"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </td>

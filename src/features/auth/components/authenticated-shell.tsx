@@ -8,10 +8,15 @@ type AuthenticatedShellProps = {
     name: string;
     email: string;
   };
+  showAccountMenu?: boolean;
   children: React.ReactNode;
 };
 
-export function AuthenticatedShell({ viewer, children }: AuthenticatedShellProps) {
+export function AuthenticatedShell({
+  viewer,
+  showAccountMenu = true,
+  children,
+}: AuthenticatedShellProps) {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(87,91,232,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(87,91,232,0.08),transparent_24%)]">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl">
@@ -28,9 +33,11 @@ export function AuthenticatedShell({ viewer, children }: AuthenticatedShellProps
             </span>
           </Link>
 
-          <div className="flex items-center gap-3">
-            <ProfileDropdown name={viewer.name} email={viewer.email} />
-          </div>
+          {showAccountMenu ? (
+            <div className="flex items-center gap-3">
+              <ProfileDropdown name={viewer.name} email={viewer.email} />
+            </div>
+          ) : null}
         </div>
       </header>
 

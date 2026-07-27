@@ -71,6 +71,23 @@ export function DocumentShareDialog({
     null,
   );
 
+  function resetDialogState() {
+    setQuery("");
+    setLoadError(null);
+    setStatusMessage(null);
+    setIsGrantingUserId(null);
+    setIsRevokingUserId(null);
+    setRevokeCandidateUserId(null);
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      resetDialogState();
+    }
+
+    onOpenChange(nextOpen);
+  }
+
   const loadSharingData = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
@@ -98,12 +115,6 @@ export function DocumentShareDialog({
 
   useEffect(() => {
     if (!open) {
-      setQuery("");
-      setLoadError(null);
-      setStatusMessage(null);
-      setIsGrantingUserId(null);
-      setIsRevokingUserId(null);
-      setRevokeCandidateUserId(null);
       return;
     }
 
@@ -186,11 +197,15 @@ export function DocumentShareDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       title={`Manage access for ${documentTitle}`}
-      description="Grant editor access to seeded users. Owners remain the only people who can rename, delete, or manage sharing."
+      description="Grant editor access to people in your workspace. Owners remain the only people who can rename, delete, or manage sharing."
       footer={
-        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleOpenChange(false)}
+        >
           Close
         </Button>
       }
@@ -202,7 +217,7 @@ export function DocumentShareDialog({
             htmlFor="share-search"
             className="text-sm font-medium text-foreground"
           >
-            Find a seeded user
+            Find a person
           </label>
           <div className="relative">
             <Search
@@ -332,7 +347,7 @@ export function DocumentShareDialog({
               Add a shared editor
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Select an eligible seeded user. Self-share and duplicate shares are
+              Select an eligible person. Self-share and duplicate shares are
               blocked by the server.
             </p>
           </div>
@@ -345,7 +360,7 @@ export function DocumentShareDialog({
           ) : filteredEligibleUsers.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {eligibleUsers.length === 0
-                ? "No eligible seeded users are available for this document."
+                ? "No eligible people are available for this document."
                 : "No eligible users match the current search."}
             </p>
           ) : (

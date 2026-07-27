@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SaveStatus } from "@/features/document-editing/models";
 
@@ -14,6 +15,9 @@ type DocumentEditorHeaderProps = {
   lastSavedAt: string | null;
   version: number;
   ownerLabel: string;
+  accessRoleLabel: string;
+  isTitleEditable?: boolean;
+  actions?: React.ReactNode;
   onBack: () => void;
 };
 
@@ -25,6 +29,9 @@ export function DocumentEditorHeader({
   lastSavedAt,
   version,
   ownerLabel,
+  accessRoleLabel,
+  isTitleEditable = true,
+  actions,
   onBack,
 }: DocumentEditorHeaderProps) {
   return (
@@ -39,9 +46,11 @@ export function DocumentEditorHeader({
           Back to documents
         </Button>
         <div className="flex flex-wrap items-center gap-3">
+          {actions}
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
             {ownerLabel}
           </p>
+          <Badge variant="outline">{accessRoleLabel}</Badge>
           <SaveStatusIndicator state={saveState} lastSavedAt={lastSavedAt} />
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
             v{version}
@@ -52,6 +61,7 @@ export function DocumentEditorHeader({
         value={title}
         onChange={onTitleChange}
         onBlur={onTitleBlur}
+        readOnly={!isTitleEditable}
       />
     </header>
   );

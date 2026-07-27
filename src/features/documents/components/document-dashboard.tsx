@@ -14,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AccountCard } from "@/features/auth/components/account-card";
 import { DocumentImportDialog } from "@/features/document-import/components/document-import-dialog";
 import { DocumentShareDialog } from "@/features/document-sharing/components/document-share-dialog";
 import { fetchJson } from "@/lib/api-client";
@@ -29,20 +28,12 @@ import type {
   DocumentSummary,
 } from "../models";
 
-type Viewer = {
-  id: string;
-  name: string;
-  email: string;
-};
-
 type DocumentDashboardProps = {
-  viewer: Viewer;
   initialDocuments?: DocumentSummary[];
   initialData?: Partial<DocumentDashboardData>;
 };
 
 export function DocumentDashboard({
-  viewer,
   initialDocuments,
   initialData,
 }: DocumentDashboardProps) {
@@ -168,8 +159,6 @@ export function DocumentDashboard({
         </div>
       </section>
 
-      <AccountCard variant="inline" name={viewer.name} email={viewer.email} />
-
       {errorMessage ? (
         <Alert variant="destructive">
           <AlertTitle>Action failed</AlertTitle>
@@ -266,8 +255,8 @@ export function DocumentDashboard({
                       No shared documents yet
                     </CardTitle>
                     <CardDescription>
-                      Documents shared by other seeded users will appear in this
-                      section with the owner clearly identified.
+                      Documents shared with you will appear here with the owner
+                      clearly identified.
                     </CardDescription>
                   </CardHeader>
                 </Card>
