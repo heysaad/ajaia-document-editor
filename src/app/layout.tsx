@@ -15,7 +15,7 @@ const firaCode = Fira_Code({
 });
 
 export const metadata: Metadata = {
-  title: "Ajai Docs",
+  title: "AJAIA Docs",
   description: "Create, edit, and safely save rich-text documents.",
 };
 

@@ -29,7 +29,7 @@ export function AuthenticatedShell({
               <span className="block text-xs uppercase tracking-[0.24em] text-muted-foreground">
                 Workspace
               </span>
-              <span className="block text-base leading-tight">Ajai Docs</span>
+              <span className="block text-base leading-tight">AJAIA Docs</span>
             </span>
           </Link>
 

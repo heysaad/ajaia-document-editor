@@ -19,7 +19,7 @@ export default async function LoginPage() {
       description="Use your verified email and password to open your private document library."
       footer={
         <>
-          New to Ajai Docs?{" "}
+          New to AJAIA Docs?{" "}
           <Link href="/signup" className="font-medium text-primary hover:underline">
             Create an account
           </Link>

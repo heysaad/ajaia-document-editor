@@ -29,7 +29,7 @@ export function AuthShell({
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <FileText className="size-4" aria-hidden="true" />
           </span>
-          Ajai Docs
+          AJAIA Docs
         </Link>
         <section className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
