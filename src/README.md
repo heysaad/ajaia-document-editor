@@ -1,152 +1,71 @@
-# Ajai Docs
+# Development setup
 
-A lightweight, full-stack rich-text document editor built with Next.js 16,
-PostgreSQL, Prisma, shadcn-style UI components, and Tiptap.
+## Prerequisites
 
-## What is included
+- Node.js 20 or later
+- Docker Desktop, for the local PostgreSQL database
 
-- Better Auth email/password registration, login, database sessions, and logout.
-- Three seeded reviewer accounts.
-- Server-enforced document ownership.
-- Create, list, reopen, rename, and delete workflows.
-- Rich-text paragraphs, headings, bold, italic, underline, and lists.
-- Import `.txt` and `.md` files up to 1 MiB into new editable documents.
-- Debounced autosave with visible saved, saving, error, and conflict states.
-- Optimistic concurrency that prevents stale edits from overwriting newer data.
-- Downloadable local JSON when a conflict needs manual recovery.
+## Install and run
 
-## Local setup
-
-Requirements:
-
-- Node.js 20 or newer.
-- Docker Desktop (recommended), or PostgreSQL 15 or newer.
-
-From this `src/` directory:
+Run all commands from the `src/` directory.
 
 ```bash
 npm install
-```
-
-Start the local PostgreSQL service and copy the matching environment file:
-
-```bash
 npm run infra:up
 ```
+
+Create a local environment file:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-On macOS or Linux, use `cp .env.example .env` instead. The default connection
-is:
+On macOS or Linux:
 
-```dotenv
-DATABASE_URL="postgresql://ajai:local_dev_password@localhost:5432/ajai_docs?schema=public"
-BETTER_AUTH_SECRET="replace-with-at-least-32-random-characters"
-BETTER_AUTH_URL="http://localhost:3000"
-DEMO_USER_PASSWORD="replace-with-a-strong-demo-password"
+```bash
+cp .env.example .env
 ```
 
-Prepare the database and start the application:
+The provided `.env.example` connects to the PostgreSQL container started by
+`npm run infra:up`. Change the secrets before sharing an environment or using
+anything other than local development.
+
+Generate the Prisma client, apply migrations, seed the local data, and start
+the development server:
 
 ```bash
 npm run db:generate
+npm run db:migrate
 npm run db:seed
 npm run dev
 ```
 
-`npm run dev` and `npm run start` automatically run `prisma migrate deploy`
-first, so pending migrations are applied at startup.
+The application is available at http://localhost:3000. `npm run dev` also
+applies pending migrations before starting.
 
-Open [http://localhost:3000](http://localhost:3000) and sign in or create an
-account. The seed command is idempotent and can be run repeatedly. It creates:
+## Database utilities
 
-- `maya@example.com`
-- `jordan@example.com`
-- `avery@example.com`
+```bash
+npm run infra:logs  # Follow PostgreSQL logs
+npm run infra:down  # Stop PostgreSQL; preserves the Docker volume
+```
 
-All three use the `DEMO_USER_PASSWORD` value from `.env`.
+To use PostgreSQL outside Docker, do not run `infra:up`; instead, set
+`DATABASE_URL` in `.env` to the target database. The database must have the
+Prisma migrations applied before starting the app.
 
-The initial migration includes the complete Better Auth schema and intentionally
-does not support upgrading the earlier demo-cookie database. If that schema was
-already applied, recreate the local database before running `db:migrate`.
-
-The PostgreSQL data is stored in the named Docker volume
-`ajai-docs_postgres-data`, so `npm run infra:down` stops the service without
-deleting local data. Use `npm run infra:logs` to follow database logs. To use
-an existing PostgreSQL installation instead, skip `infra:up` and set
-`DATABASE_URL` in `.env` to that database.
-
-## Architecture
-
-Application code is grouped by feature. Document rules are independent of
-Next.js and Prisma:
-
-- `DocumentService` depends on `IDocumentRepository`.
-- Better Auth owns password hashing and session persistence through its Prisma
-  adapter.
-- Server components and route handlers resolve the Better Auth session through
-  one server-only helper.
-- Route handlers only parse HTTP input, resolve identity, call a service, and
-  map errors.
-- Tiptap content validation and plain-text derivation are pure functions.
-- The editor depends on `DocumentSaveClientPort`; its fetch implementation can
-  be replaced by a fake in unit tests.
-
-The database stores Tiptap JSON as the canonical document body, a derived text
-preview, and an integer version. Content updates use a conditional
-`id + ownerId + expectedVersion` write and increment the version atomically.
-Imported files are parsed on the server, converted into the same strict Tiptap
-schema, and discarded immediately after conversion.
-
-## Validation limits
-
-- Titles: 120 characters.
-- List page size: 20 by default, 50 maximum.
-- Content JSON: 256 KiB.
-- Total text: 100,000 characters.
-- Nesting: 20 levels.
-- Only the nodes, marks, and attributes enabled by the editor are accepted.
-- File import: one `.txt` or `.md` file per request, valid UTF-8 only, 1 MiB
-  maximum. Embedded Markdown HTML is flattened into plain text and unsupported
-  Markdown constructs are reduced to readable text where possible.
-
-## API notes
-
-- `POST /api/documents` creates a blank document for the authenticated user.
-- `POST /api/documents/import` accepts `multipart/form-data` with exactly one
-  uploaded file, usually in the `file` field, and returns `201` plus the new
-  `DocumentDetail` payload.
-- Import validation failures return the stable API envelope with
-  `error.code = "validation_error"` and `error.details = { field: "file", reason: ... }`.
-
-## Tests and quality checks
+## Checks and tests
 
 ```bash
 npm run lint
 npm run typecheck
 npm run test:unit
 npm run test:integration
-npm run build
 npx playwright install chromium
 npm run test:e2e
+npm run build
 ```
 
-Integration and E2E tests require `DATABASE_URL` to reference a migrated,
-seeded test database. The repository integration suite creates and removes only
-its own fixed test records. The E2E suite creates a document through the UI and
-deletes it before finishing.
-
-## Deployment
-
-The intended deployment is Vercel with Neon PostgreSQL:
-
-1. Create a Neon database and set `DATABASE_URL`, `BETTER_AUTH_SECRET`,
-   `BETTER_AUTH_URL`, and `DEMO_USER_PASSWORD` in Vercel.
-2. Run `npm run db:migrate` and `npm run db:seed` against the production
-   connection.
-3. Deploy the `src/` project with the standard `npm run build` command.
-
-File import, sharing, password recovery, email verification, OAuth, automatic
-conflict merging, and real-time collaboration are intentionally deferred.
+Integration and end-to-end tests need a migrated, seeded database referenced
+by `DATABASE_URL`. End-to-end tests start the development server automatically
+when one is not already running.
