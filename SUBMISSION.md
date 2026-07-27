@@ -4,7 +4,7 @@
 
 - Repository: <https://github.com/heysaad/ajaia-document-editor>
 - Local application: <http://localhost:3000>
-- Live deployment: 
+- Live deployment: https://ajaia-document-editor-rouge.vercel.app/
 
 ## Overview
 
