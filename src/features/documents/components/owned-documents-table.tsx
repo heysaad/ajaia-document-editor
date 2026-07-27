@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { MoreHorizontal, PencilLine, Share2, Trash2 } from "lucide-react";
 
 import {
@@ -10,7 +13,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,9 +60,13 @@ export function OwnedDocumentsTable({
   isDeletingId,
   isSavingTitleId,
 }: OwnedDocumentsTableProps) {
+  const [pendingDeleteDocument, setPendingDeleteDocument] =
+    useState<DashboardDocumentSummary | null>(null);
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-left">
+    <>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-left">
         <thead className="border-b border-border/70">
           <tr className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
             <th className="px-6 py-4 font-medium">Document</th>
@@ -172,37 +178,14 @@ export function OwnedDocumentsTable({
                             Share
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem
-                                className="cursor-pointer rounded-lg text-destructive focus:bg-destructive/10 focus:text-destructive"
-                                disabled={isDeleting}
-                              >
-                                <Trash2 aria-hidden="true" />
-                                Delete
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Delete {document.title}?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This permanently removes the document from your
-                                  owned list.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Keep document</AlertDialogCancel>
-                                <AlertDialogAction
-                                  disabled={isDeleting}
-                                  onClick={() => onDeleteConfirm(document.id)}
-                                >
-                                  {isDeleting ? "Deleting..." : "Confirm delete"}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <DropdownMenuItem
+                            className="cursor-pointer rounded-lg text-destructive focus:bg-destructive/10 focus:text-destructive"
+                            disabled={isDeleting}
+                            onSelect={() => setPendingDeleteDocument(document)}
+                          >
+                            <Trash2 aria-hidden="true" />
+                            Delete
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
@@ -212,7 +195,45 @@ export function OwnedDocumentsTable({
             );
           })}
         </tbody>
-      </table>
-    </div>
+        </table>
+      </div>
+
+      <AlertDialog
+        open={pendingDeleteDocument !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteDocument(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {pendingDeleteDocument?.title}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the document from your owned list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep document</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={
+                pendingDeleteDocument?.id === isDeletingId
+              }
+              onClick={() => {
+                if (pendingDeleteDocument) {
+                  onDeleteConfirm(pendingDeleteDocument.id);
+                }
+              }}
+            >
+              {pendingDeleteDocument?.id === isDeletingId
+                ? "Deleting..."
+                : "Confirm delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

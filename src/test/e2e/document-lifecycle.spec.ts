@@ -12,9 +12,7 @@ test("creates, formats, reopens, renames, and deletes a document", async ({
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL("/", { timeout: 30_000 });
 
-  const createButton = page
-    .getByRole("button", { name: "Create untitled document" })
-    .first();
+  const createButton = page.getByRole("button", { name: "Add document" });
   await expect(createButton).toBeEnabled();
   await createButton.click();
   await expect(page).toHaveURL(/\/documents\/[0-9a-f-]+$/, {
@@ -43,7 +41,10 @@ test("creates, formats, reopens, renames, and deletes a document", async ({
   await expect(page).toHaveURL("/");
 
   const card = page.locator(`[data-document-id="${documentId}"]`);
-  await card.getByRole("button", { name: "Rename" }).click();
+  await card
+    .getByRole("button", { name: "Open actions for Lifecycle verification" })
+    .click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   await card
     .getByRole("textbox", { name: "Document title" })
     .fill("Renamed lifecycle document");
@@ -52,8 +53,11 @@ test("creates, formats, reopens, renames, and deletes a document", async ({
     card.getByRole("link", { name: "Renamed lifecycle document" }),
   ).toBeVisible();
 
-  await card.getByRole("button", { name: "Delete" }).click();
-  await card.getByRole("button", { name: "Confirm delete" }).click();
+  await card
+    .getByRole("button", { name: "Open actions for Renamed lifecycle document" })
+    .click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await page.getByRole("button", { name: "Confirm delete" }).click();
   await expect(card).toHaveCount(0);
 });
 
