@@ -104,7 +104,7 @@ describe("PrismaDocumentRepository", () => {
       contentJson: emptyContent,
       contentText: "",
     });
-    const third = await repository.create({
+    await repository.create({
       id: "c290b390-1375-408e-a7dd-75ab7964b06c",
       ownerId,
       title: "Owned three",

@@ -85,15 +85,15 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   constructor(private readonly db: PrismaClient) {}
 
   private async listDocumentsPage(
-    where: any,
+    where: Prisma.DocumentWhereInput,
     input: { page: number; pageSize: number },
   ): Promise<DocumentPageRecordsResult> {
-    const totalItems = await this.db.document.count({ where: where as any });
+    const totalItems = await this.db.document.count({ where });
     const totalPages = Math.max(1, Math.ceil(totalItems / input.pageSize));
     const page = Math.min(Math.max(input.page, 1), totalPages);
 
     const documents = await this.db.document.findMany({
-      where: where as any,
+      where,
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * input.pageSize,
       take: input.pageSize,
@@ -163,7 +163,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
     cursor,
     limit,
   }: ListSharedDocumentRecordsInput): Promise<DocumentRecord[]> {
-    const sharedFilter: any = {
+    const sharedFilter: Prisma.DocumentWhereInput = {
       shares: {
         some: {
           userId: viewerId,
@@ -197,7 +197,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
     page,
     pageSize,
   }: ListSharedDocumentPageRecordsInput): Promise<DocumentPageRecordsResult> {
-    const sharedFilter: any = {
+    const sharedFilter: Prisma.DocumentWhereInput = {
       shares: {
         some: {
           userId: viewerId,
@@ -297,8 +297,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   }
 
   async listShares(documentId: string): Promise<DocumentShareRecord[]> {
-    const documentShare = (this.db as any).documentShare;
-    const shares = await documentShare.findMany({
+    const shares = await this.db.documentShare.findMany({
       where: { documentId },
       orderBy: [{ createdAt: "asc" }, { userId: "asc" }],
       include: {
@@ -358,8 +357,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   async createShareIfMissing(
     input: CreateDocumentShareRecordInput,
   ): Promise<CreateDocumentShareResult> {
-    const documentShare = (this.db as any).documentShare;
-    const existing = await documentShare.findUnique({
+    const existing = await this.db.documentShare.findUnique({
       where: {
         documentId_userId: {
           documentId: input.documentId,
@@ -381,7 +379,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
     }
 
     try {
-      const created = await documentShare.create({
+      const created = await this.db.documentShare.create({
         data: input,
         include: {
           user: {
@@ -399,7 +397,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
         error instanceof PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        const share = await documentShare.findUniqueOrThrow({
+        const share = await this.db.documentShare.findUniqueOrThrow({
           where: {
             documentId_userId: {
               documentId: input.documentId,
@@ -424,8 +422,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   }
 
   async deleteShare(documentId: string, userId: string): Promise<number> {
-    const documentShare = (this.db as any).documentShare;
-    const result = await documentShare.deleteMany({
+    const result = await this.db.documentShare.deleteMany({
       where: { documentId, userId },
     });
 
