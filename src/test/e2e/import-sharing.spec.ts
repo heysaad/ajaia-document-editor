@@ -16,7 +16,7 @@ async function signOut(page: Page, email: string) {
   await expect(page).toHaveURL("/login");
 }
 
-test("imports Markdown and grants a seeded user shared editor access", async ({
+test("imports Markdown and grants a registered user shared editor access", async ({
   page,
 }) => {
   const title = `Shared import ${Date.now()}`;
@@ -55,8 +55,12 @@ test("imports Markdown and grants a seeded user shared editor access", async ({
   const shareDialog = page.getByRole("dialog", {
     name: `Manage access for ${title}`,
   });
-  await shareDialog.getByLabel("Find a person").fill("jordan@example.com");
-  await shareDialog.getByRole("button", { name: "Grant access" }).click();
+  await shareDialog.getByLabel("Add people").fill("jordan@example.com");
+  await shareDialog
+    .getByRole("option", {
+      name: "Grant access to Jordan Lee jordan@example.com",
+    })
+    .click();
   await expect(
     shareDialog.getByText("Editor access granted to Jordan Lee."),
   ).toBeVisible();
@@ -76,6 +80,10 @@ test("imports Markdown and grants a seeded user shared editor access", async ({
   await expect(
     page.getByRole("textbox", { name: "Document title" }),
   ).toHaveCount(0);
+  await page
+    .getByLabel("Document content")
+    .fill("Edited successfully by the shared user.");
+  await expect(page.getByText(/Saved at/)).toBeVisible();
 
   await signOut(page, "jordan@example.com");
   await signIn(page, "maya@example.com");
