@@ -50,20 +50,12 @@ export function SharedDocumentsTable({
                 className="border-b border-border/60 align-top last:border-b-0"
               >
                 <td className="px-6 py-5">
-                  <div className="space-y-3">
-                    <Badge variant="secondary">Shared</Badge>
-                    <Link
-                      href={`/documents/${document.id}`}
-                      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      <span className="block text-base font-semibold text-foreground">
-                        {document.title}
-                      </span>
-                    </Link>
-                    <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                      {document.excerpt || "This shared document is ready for more edits."}
-                    </p>
-                  </div>
+                  <Link
+                    href={`/documents/${document.id}`}
+                    className="block rounded-lg text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    {document.title}
+                  </Link>
                 </td>
                 <td className="px-6 py-5 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">
