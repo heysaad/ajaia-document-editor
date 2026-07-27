@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { AuthenticatedShell } from "@/features/auth/components/authenticated-shell";
 import { getOptionalSessionUser } from "@/features/auth/server/auth-session";
 import { DocumentEditorScreen } from "@/features/document-editing/components/document-editor-screen";
 import { appContainer } from "@/infra/di/container";
@@ -36,5 +37,9 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
   const { documentId } = await params;
   const document = await getOwnedDocument(viewer.id, documentId);
 
-  return <DocumentEditorScreen document={document} />;
+  return (
+    <AuthenticatedShell viewer={viewer}>
+      <DocumentEditorScreen document={document} />
+    </AuthenticatedShell>
+  );
 }
