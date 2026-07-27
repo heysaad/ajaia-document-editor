@@ -25,21 +25,18 @@ import type {
   DashboardDocumentSummary,
   DocumentDashboardData,
   DocumentDetail,
-  DocumentSummary,
 } from "../models";
 
 type DocumentDashboardProps = {
-  initialDocuments?: DocumentSummary[];
   initialData?: Partial<DocumentDashboardData>;
 };
 
 export function DocumentDashboard({
-  initialDocuments,
   initialData,
 }: DocumentDashboardProps) {
   const router = useRouter();
   const [ownedDocuments, setOwnedDocuments] = useState<DashboardDocumentSummary[]>(
-    initialData?.owned?.items ?? initialDocuments ?? [],
+    initialData?.owned?.items ?? [],
   );
   const [sharedDocuments] = useState<DashboardDocumentSummary[]>(
     initialData?.shared?.items ?? [],

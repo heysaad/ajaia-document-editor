@@ -42,6 +42,7 @@ describe("save state reducer", () => {
       createdAt: "2026-07-27T10:00:00.000Z",
       contentJson: { type: "doc" },
       owner: { id: "u", name: "User", email: "user@example.com" },
+      accessRole: "OWNER" as const,
     };
     const conflicted = saveStateReducer(createInitialSaveState(6, null), {
       type: "conflict",

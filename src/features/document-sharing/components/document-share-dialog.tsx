@@ -118,7 +118,11 @@ export function DocumentShareDialog({
       return;
     }
 
-    void loadSharingData();
+    const timerId = window.setTimeout(() => {
+      void loadSharingData();
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
   }, [loadSharingData, open]);
 
   async function handleGrant(user: ShareTargetRecord) {
