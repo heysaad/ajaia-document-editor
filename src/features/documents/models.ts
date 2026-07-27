@@ -6,6 +6,8 @@ export interface DocumentOwnerRecord {
   email: string;
 }
 
+export type DocumentAccessRole = "OWNER" | "EDITOR";
+
 export interface DocumentRecord {
   id: string;
   ownerId: string;
@@ -50,6 +52,14 @@ export interface CreateDocumentInput {
   title?: string;
 }
 
+export interface ImportDocumentInput {
+  ownerId: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  fileContent: Uint8Array;
+}
+
 export interface ListOwnedDocumentsInput {
   ownerId: string;
   limit: number;
@@ -87,13 +97,29 @@ export interface DocumentSummary {
   updatedAt: string;
 }
 
+export interface DashboardDocumentSummary extends DocumentSummary {
+  accessRole?: DocumentAccessRole;
+  owner?: DocumentOwnerRecord;
+}
+
 export interface DocumentListResult {
   items: DocumentSummary[];
   nextCursor: string | null;
+}
+
+export interface DashboardDocumentListResult {
+  items: DashboardDocumentSummary[];
+  nextCursor: string | null;
+}
+
+export interface DocumentDashboardData {
+  owned: DashboardDocumentListResult;
+  shared: DashboardDocumentListResult;
 }
 
 export interface DocumentDetail extends DocumentSummary {
   contentJson: JSONContent;
   createdAt: string;
   owner: DocumentOwnerRecord;
+  accessRole?: DocumentAccessRole;
 }

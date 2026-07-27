@@ -10,6 +10,7 @@ PostgreSQL, Prisma, shadcn-style UI components, and Tiptap.
 - Server-enforced document ownership.
 - Create, list, reopen, rename, and delete workflows.
 - Rich-text paragraphs, headings, bold, italic, underline, and lists.
+- Import `.txt` and `.md` files up to 1 MiB into new editable documents.
 - Debounced autosave with visible saved, saving, error, and conflict states.
 - Optimistic concurrency that prevents stale edits from overwriting newer data.
 - Downloadable local JSON when a conflict needs manual recovery.
@@ -73,8 +74,8 @@ already applied, recreate the local database before running `db:migrate`.
 
 The PostgreSQL data is stored in the named Docker volume
 `ajai-docs_postgres-data`, so `npm run infra:down` stops the service without
-deleting local data. Use `npm run infra:logs` to follow database logs. To use an
-existing PostgreSQL installation instead, skip `infra:up` and set
+deleting local data. Use `npm run infra:logs` to follow database logs. To use
+an existing PostgreSQL installation instead, skip `infra:up` and set
 `DATABASE_URL` in `.env` to that database.
 
 ## Architecture
@@ -96,6 +97,8 @@ Next.js and Prisma:
 The database stores Tiptap JSON as the canonical document body, a derived text
 preview, and an integer version. Content updates use a conditional
 `id + ownerId + expectedVersion` write and increment the version atomically.
+Imported files are parsed on the server, converted into the same strict Tiptap
+schema, and discarded immediately after conversion.
 
 ## Validation limits
 
@@ -105,6 +108,18 @@ preview, and an integer version. Content updates use a conditional
 - Total text: 100,000 characters.
 - Nesting: 20 levels.
 - Only the nodes, marks, and attributes enabled by the editor are accepted.
+- File import: one `.txt` or `.md` file per request, valid UTF-8 only, 1 MiB
+  maximum. Embedded Markdown HTML is flattened into plain text and unsupported
+  Markdown constructs are reduced to readable text where possible.
+
+## API notes
+
+- `POST /api/documents` creates a blank document for the authenticated user.
+- `POST /api/documents/import` accepts `multipart/form-data` with exactly one
+  uploaded file, usually in the `file` field, and returns `201` plus the new
+  `DocumentDetail` payload.
+- Import validation failures return the stable API envelope with
+  `error.code = "validation_error"` and `error.details = { field: "file", reason: ... }`.
 
 ## Tests and quality checks
 

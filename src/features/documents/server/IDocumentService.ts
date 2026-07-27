@@ -4,6 +4,7 @@ import type {
   DocumentDetail,
   DocumentListResult,
   GetOwnedDocumentInput,
+  ImportDocumentInput,
   ListOwnedDocumentsInput,
   RenameDocumentInput,
   UpdateDocumentContentInput,
@@ -11,6 +12,7 @@ import type {
 
 export interface IDocumentService {
   createDocument(input: CreateDocumentInput): Promise<DocumentDetail>;
+  importDocument(input: ImportDocumentInput): Promise<DocumentDetail>;
   listOwnedDocuments(
     input: ListOwnedDocumentsInput,
   ): Promise<DocumentListResult>;

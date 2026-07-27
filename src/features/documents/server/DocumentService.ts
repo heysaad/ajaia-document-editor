@@ -1,6 +1,9 @@
 import type { JSONContent } from "@tiptap/core";
 
 import {
+  convertImportedDocument,
+} from "@/features/document-import/server/import-document";
+import {
   createEmptyDocumentContent,
   documentContentToPlainText,
   parseDocumentContent,
@@ -17,6 +20,7 @@ import type {
   DocumentRecord,
   DocumentSummary,
   GetOwnedDocumentInput,
+  ImportDocumentInput,
   ListOwnedDocumentsInput,
   RenameDocumentInput,
   UpdateDocumentContentInput,
@@ -77,6 +81,24 @@ export class DocumentService implements IDocumentService {
       title: normalizeCreateTitle(input.title),
       contentJson,
       contentText: "",
+    });
+
+    return toDetail(document);
+  }
+
+  async importDocument(input: ImportDocumentInput): Promise<DocumentDetail> {
+    const imported = convertImportedDocument({
+      fileName: input.fileName,
+      mimeType: input.mimeType,
+      fileSize: input.fileSize,
+      fileContent: input.fileContent,
+    });
+    const document = await this.repository.create({
+      id: crypto.randomUUID(),
+      ownerId: input.ownerId,
+      title: normalizeCreateTitle(imported.title),
+      contentJson: imported.contentJson,
+      contentText: imported.contentText,
     });
 
     return toDetail(document);
