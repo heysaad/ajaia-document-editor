@@ -2,7 +2,7 @@ import "server-only";
 
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import {
-  type DocumentShareRole,
+  type Prisma,
   type PrismaClient,
 } from "@prisma/client";
 
@@ -14,56 +14,50 @@ import type {
   DocumentViewerRecord,
   FindDocumentForViewerInput,
   FindShareTargetInput,
+  DocumentPageRecordsResult,
   ListEligibleShareUsersInput,
+  ListOwnedDocumentPageRecordsInput,
   ListOwnedDocumentRecordsInput,
+  ListSharedDocumentPageRecordsInput,
   ListSharedDocumentRecordsInput,
   ShareTargetRecord,
   UpdateDocumentRecordContentInput,
   UpdateDocumentRecordTitleInput,
 } from "@/features/documents/models";
-import type { DocumentShareRecord } from "@/features/document-sharing/models";
+import type {
+  DocumentShareRecord,
+  DocumentShareRole,
+} from "@/features/document-sharing/models";
 import type { IDocumentRepository } from "@/features/documents/server/IDocumentRepository";
 import { SEEDED_USERS } from "@/features/auth/server/seeded-users";
 
-function mapPrismaDocument(record: {
-  id: string;
-  ownerId: string;
-  title: string;
-  contentJson: unknown;
-  contentText: string;
-  version: number;
-  createdAt: Date;
-  updatedAt: Date;
-  owner: {
-    id: string;
-    name: string;
-    email: string;
+type DocumentWithOwner = Prisma.DocumentGetPayload<{
+  include: {
+    owner: {
+      select: { id: true; name: true; email: true };
+    };
   };
-}): DocumentRecord {
+}>;
+
+type DocumentWithOwnerAndShares = Prisma.DocumentGetPayload<{
+  include: {
+    owner: {
+      select: { id: true; name: true; email: true };
+    };
+    shares: {
+      select: { role: true };
+    };
+  };
+}>;
+
+function mapPrismaDocument(record: DocumentWithOwner): DocumentRecord {
   return {
     ...record,
     contentJson: record.contentJson as DocumentRecord["contentJson"],
   };
 }
 
-function mapPrismaViewerDocument(record: {
-  id: string;
-  ownerId: string;
-  title: string;
-  contentJson: unknown;
-  contentText: string;
-  version: number;
-  createdAt: Date;
-  updatedAt: Date;
-  owner: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  shares: Array<{
-    role: DocumentShareRole;
-  }>;
-}): DocumentViewerRecord {
+function mapPrismaViewerDocument(record: DocumentWithOwnerAndShares): DocumentViewerRecord {
   return {
     ...mapPrismaDocument(record),
     viewerShareRole: record.shares[0]?.role ?? null,
@@ -90,6 +84,34 @@ function mapPrismaShare(record: {
 
 export class PrismaDocumentRepository implements IDocumentRepository {
   constructor(private readonly db: PrismaClient) {}
+
+  private async listDocumentsPage(
+    where: any,
+    input: { page: number; pageSize: number },
+  ): Promise<DocumentPageRecordsResult> {
+    const totalItems = await this.db.document.count({ where: where as any });
+    const totalPages = Math.max(1, Math.ceil(totalItems / input.pageSize));
+    const page = Math.min(Math.max(input.page, 1), totalPages);
+
+    const documents = await this.db.document.findMany({
+      where: where as any,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * input.pageSize,
+      take: input.pageSize,
+      include: {
+        owner: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    return {
+      items: documents.map((record) => mapPrismaDocument(record as DocumentWithOwner)),
+      totalItems,
+      page,
+      pageSize: input.pageSize,
+    };
+  }
 
   async create(input: CreateDocumentRecordInput): Promise<DocumentRecord> {
     const document = await this.db.document.create({
@@ -126,7 +148,15 @@ export class PrismaDocumentRepository implements IDocumentRepository {
       },
     });
 
-    return documents.map(mapPrismaDocument);
+    return documents.map((record) => mapPrismaDocument(record as DocumentWithOwner));
+  }
+
+  async listOwnedPage({
+    ownerId,
+    page,
+    pageSize,
+  }: ListOwnedDocumentPageRecordsInput): Promise<DocumentPageRecordsResult> {
+    return this.listDocumentsPage({ ownerId }, { page, pageSize });
   }
 
   async listShared({
@@ -134,15 +164,17 @@ export class PrismaDocumentRepository implements IDocumentRepository {
     cursor,
     limit,
   }: ListSharedDocumentRecordsInput): Promise<DocumentRecord[]> {
-    const documents = await this.db.document.findMany({
-      where: {
-        shares: {
-          some: {
-            userId: viewerId,
-            role: "EDITOR",
-          },
+    const sharedFilter: any = {
+      shares: {
+        some: {
+          userId: viewerId,
+          role: "EDITOR",
         },
       },
+    };
+
+    const documents = await this.db.document.findMany({
+      where: sharedFilter,
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       ...(cursor
         ? {
@@ -158,7 +190,27 @@ export class PrismaDocumentRepository implements IDocumentRepository {
       },
     });
 
-    return documents.map(mapPrismaDocument);
+    return documents.map((record) => mapPrismaDocument(record as DocumentWithOwner));
+  }
+
+  async listSharedPage({
+    viewerId,
+    page,
+    pageSize,
+  }: ListSharedDocumentPageRecordsInput): Promise<DocumentPageRecordsResult> {
+    const sharedFilter: any = {
+      shares: {
+        some: {
+          userId: viewerId,
+          role: "EDITOR",
+        },
+      },
+    };
+
+    return this.listDocumentsPage(
+      sharedFilter,
+      { page, pageSize },
+    );
   }
 
   async findById(id: string): Promise<DocumentRecord | null> {
@@ -192,7 +244,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
       },
     });
 
-    return document ? mapPrismaViewerDocument(document) : null;
+    return document ? mapPrismaViewerDocument(document as DocumentWithOwnerAndShares) : null;
   }
 
   async updateTitle({
@@ -246,7 +298,8 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   }
 
   async listShares(documentId: string): Promise<DocumentShareRecord[]> {
-    const shares = await this.db.documentShare.findMany({
+    const documentShare = (this.db as any).documentShare;
+    const shares = await documentShare.findMany({
       where: { documentId },
       orderBy: [{ createdAt: "asc" }, { userId: "asc" }],
       include: {
@@ -297,7 +350,8 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   async createShareIfMissing(
     input: CreateDocumentShareRecordInput,
   ): Promise<CreateDocumentShareResult> {
-    const existing = await this.db.documentShare.findUnique({
+    const documentShare = (this.db as any).documentShare;
+    const existing = await documentShare.findUnique({
       where: {
         documentId_userId: {
           documentId: input.documentId,
@@ -319,7 +373,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
     }
 
     try {
-      const created = await this.db.documentShare.create({
+      const created = await documentShare.create({
         data: input,
         include: {
           user: {
@@ -337,7 +391,7 @@ export class PrismaDocumentRepository implements IDocumentRepository {
         error instanceof PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        const share = await this.db.documentShare.findUniqueOrThrow({
+        const share = await documentShare.findUniqueOrThrow({
           where: {
             documentId_userId: {
               documentId: input.documentId,
@@ -362,7 +416,8 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   }
 
   async deleteShare(documentId: string, userId: string): Promise<number> {
-    const result = await this.db.documentShare.deleteMany({
+    const documentShare = (this.db as any).documentShare;
+    const result = await documentShare.deleteMany({
       where: { documentId, userId },
     });
 

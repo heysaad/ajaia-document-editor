@@ -129,9 +129,9 @@ export interface UpdateDocumentContentInput {
 
 export interface ListDashboardDocumentsInput {
   viewerId: string;
-  limit: number;
-  ownedCursor?: string;
-  sharedCursor?: string;
+  pageSize: number;
+  ownedPage?: number;
+  sharedPage?: number;
 }
 
 export interface GetDocumentForViewerInput {
@@ -180,9 +180,37 @@ export interface DocumentListResult {
   nextCursor: string | null;
 }
 
+export interface DocumentPaginationInfo {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
 export interface DashboardDocumentListResult {
   items: DashboardDocumentSummary[];
-  nextCursor: string | null;
+  pagination: DocumentPaginationInfo;
+}
+
+export interface DocumentPageRecordsResult {
+  items: DocumentRecord[];
+  totalItems: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListOwnedDocumentPageRecordsInput {
+  ownerId: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListSharedDocumentPageRecordsInput {
+  viewerId: string;
+  page: number;
+  pageSize: number;
 }
 
 export interface DocumentDashboardData {

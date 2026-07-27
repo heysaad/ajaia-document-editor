@@ -3,9 +3,12 @@ import type {
   CreateDocumentShareResult,
   CreateDocumentRecordInput,
   DocumentRecord,
+  DocumentPageRecordsResult,
   DocumentViewerRecord,
   FindDocumentForViewerInput,
   FindShareTargetInput,
+  ListOwnedDocumentPageRecordsInput,
+  ListSharedDocumentPageRecordsInput,
   ListEligibleShareUsersInput,
   ListOwnedDocumentRecordsInput,
   ListSharedDocumentRecordsInput,
@@ -19,6 +22,12 @@ export interface IDocumentRepository {
   create(input: CreateDocumentRecordInput): Promise<DocumentRecord>;
   listOwned(input: ListOwnedDocumentRecordsInput): Promise<DocumentRecord[]>;
   listShared(input: ListSharedDocumentRecordsInput): Promise<DocumentRecord[]>;
+  listOwnedPage(
+    input: ListOwnedDocumentPageRecordsInput,
+  ): Promise<DocumentPageRecordsResult>;
+  listSharedPage(
+    input: ListSharedDocumentPageRecordsInput,
+  ): Promise<DocumentPageRecordsResult>;
   findById(id: string): Promise<DocumentRecord | null>;
   findByIdForViewer(
     input: FindDocumentForViewerInput,

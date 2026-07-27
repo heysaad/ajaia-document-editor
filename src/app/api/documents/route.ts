@@ -16,16 +16,16 @@ export const runtime = "nodejs";
 export const GET = handleRoute(async (request: NextRequest) => {
   const viewer = await resolveSessionUser();
   const query = listDocumentsSearchSchema.parse({
-    ownedCursor: request.nextUrl.searchParams.get("ownedCursor") ?? undefined,
-    sharedCursor: request.nextUrl.searchParams.get("sharedCursor") ?? undefined,
-    limit: request.nextUrl.searchParams.get("limit") ?? undefined,
+    ownedPage: request.nextUrl.searchParams.get("ownedPage") ?? undefined,
+    sharedPage: request.nextUrl.searchParams.get("sharedPage") ?? undefined,
+    pageSize: request.nextUrl.searchParams.get("pageSize") ?? undefined,
   });
 
   const documents = await documentService.listDashboardDocuments({
     viewerId: viewer.id,
-    ownedCursor: query.ownedCursor,
-    sharedCursor: query.sharedCursor,
-    limit: query.limit,
+    ownedPage: query.ownedPage,
+    sharedPage: query.sharedPage,
+    pageSize: query.pageSize,
   });
 
   return NextResponse.json(documents);

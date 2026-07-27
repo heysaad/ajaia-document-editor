@@ -8,8 +8,11 @@ import type {
   DocumentViewerRecord,
   FindDocumentForViewerInput,
   FindShareTargetInput,
+  DocumentPageRecordsResult,
   ListEligibleShareUsersInput,
+  ListOwnedDocumentPageRecordsInput,
   ListOwnedDocumentRecordsInput,
+  ListSharedDocumentPageRecordsInput,
   ListSharedDocumentRecordsInput,
   ShareTargetRecord,
   UpdateDocumentRecordContentInput,
@@ -107,6 +110,18 @@ class InMemoryDocumentRepository implements IDocumentRepository {
       .slice(0, limit);
   }
 
+  async listOwnedPage(
+    unusedInput: ListOwnedDocumentPageRecordsInput,
+  ): Promise<DocumentPageRecordsResult> {
+    void unusedInput;
+    return {
+      items: [],
+      totalItems: 0,
+      page: 1,
+      pageSize: 1,
+    };
+  }
+
   async listShared({ viewerId, limit }: ListSharedDocumentRecordsInput) {
     const sharedDocumentIds = [...this.shares.values()]
       .filter((share) => share.userId === viewerId)
@@ -115,6 +130,18 @@ class InMemoryDocumentRepository implements IDocumentRepository {
     return [...this.documents.values()]
       .filter((item) => sharedDocumentIds.includes(item.id))
       .slice(0, limit);
+  }
+
+  async listSharedPage(
+    unusedInput: ListSharedDocumentPageRecordsInput,
+  ): Promise<DocumentPageRecordsResult> {
+    void unusedInput;
+    return {
+      items: [],
+      totalItems: 0,
+      page: 1,
+      pageSize: 1,
+    };
   }
 
   async findById(id: string) {

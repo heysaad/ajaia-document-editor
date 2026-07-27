@@ -8,8 +8,11 @@ import type {
   DocumentViewerRecord,
   FindDocumentForViewerInput,
   FindShareTargetInput,
+  DocumentPageRecordsResult,
   ListEligibleShareUsersInput,
+  ListOwnedDocumentPageRecordsInput,
   ListSharedDocumentRecordsInput,
+  ListSharedDocumentPageRecordsInput,
   ShareTargetRecord,
 } from "@/features/documents/models";
 import { DocumentService } from "@/features/documents/server/DocumentService";
@@ -69,9 +72,33 @@ class InMemoryDocumentRepository implements IDocumentRepository {
     return [];
   }
 
+  async listOwnedPage(
+    unusedInput: ListOwnedDocumentPageRecordsInput,
+  ): Promise<DocumentPageRecordsResult> {
+    void unusedInput;
+    return {
+      items: [],
+      totalItems: 0,
+      page: 1,
+      pageSize: 1,
+    };
+  }
+
   async listShared(unusedInput: ListSharedDocumentRecordsInput) {
     void unusedInput;
     return [];
+  }
+
+  async listSharedPage(
+    unusedInput: ListSharedDocumentPageRecordsInput,
+  ): Promise<DocumentPageRecordsResult> {
+    void unusedInput;
+    return {
+      items: [],
+      totalItems: 0,
+      page: 1,
+      pageSize: 1,
+    };
   }
 
   async findById(id: string) {

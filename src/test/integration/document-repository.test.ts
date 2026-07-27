@@ -79,6 +79,93 @@ describe("PrismaDocumentRepository", () => {
     expect(await repository.findById(second.id)).not.toBeNull();
   });
 
+  it("paginates owned and shared document lists", async () => {
+    const first = await repository.create({
+      id: "a290b390-1375-408e-a7dd-75ab7964b06c",
+      ownerId,
+      title: "Owned one",
+      contentJson: emptyContent,
+      contentText: "",
+    });
+    const second = await repository.create({
+      id: "b290b390-1375-408e-a7dd-75ab7964b06c",
+      ownerId,
+      title: "Owned two",
+      contentJson: emptyContent,
+      contentText: "",
+    });
+    const third = await repository.create({
+      id: "c290b390-1375-408e-a7dd-75ab7964b06c",
+      ownerId,
+      title: "Owned three",
+      contentJson: emptyContent,
+      contentText: "",
+    });
+
+    await repository.createShareIfMissing({
+      documentId: first.id,
+      userId: sharedEditorId,
+      role: "EDITOR",
+    });
+    await repository.createShareIfMissing({
+      documentId: second.id,
+      userId: sharedEditorId,
+      role: "EDITOR",
+    });
+
+    const ownedPageOne = await repository.listOwnedPage({
+      ownerId,
+      page: 1,
+      pageSize: 2,
+    });
+    const ownedPageTwo = await repository.listOwnedPage({
+      ownerId,
+      page: 2,
+      pageSize: 2,
+    });
+    const sharedPageOne = await repository.listSharedPage({
+      viewerId: sharedEditorId,
+      page: 1,
+      pageSize: 1,
+    });
+    const sharedPageTwo = await repository.listSharedPage({
+      viewerId: sharedEditorId,
+      page: 2,
+      pageSize: 1,
+    });
+
+    expect(ownedPageOne).toMatchObject({
+      totalItems: 3,
+      page: 1,
+      pageSize: 2,
+      items: expect.any(Array),
+    });
+    expect(ownedPageOne.items).toHaveLength(2);
+    expect(ownedPageOne.page).toBe(1);
+    expect(ownedPageOne.totalItems).toBe(3);
+
+    expect(ownedPageTwo).toMatchObject({
+      totalItems: 3,
+      page: 2,
+      pageSize: 2,
+    });
+    expect(ownedPageTwo.items).toHaveLength(1);
+    expect(ownedPageTwo.items[0].id).toBe(first.id);
+
+    expect(sharedPageOne).toMatchObject({
+      totalItems: 2,
+      page: 1,
+      pageSize: 1,
+    });
+    expect(sharedPageOne.items).toHaveLength(1);
+    expect(sharedPageTwo).toMatchObject({
+      totalItems: 2,
+      page: 2,
+      pageSize: 1,
+    });
+    expect(sharedPageTwo.items).toHaveLength(1);
+  });
+
   it("increments once and rejects stale or wrong-owner content writes", async () => {
     const document = await repository.create({
       id: "2a4b11dc-e69e-4eed-8073-180b91dd7c96",

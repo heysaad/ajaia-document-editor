@@ -24,10 +24,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { DashboardDocumentSummary } from "@/features/documents/models";
+import type {
+  DashboardDocumentSummary,
+  DocumentPaginationInfo,
+} from "@/features/documents/models";
+
+import { DocumentPaginationControls } from "./document-pagination-controls";
 
 type OwnedDocumentsTableProps = {
   documents: DashboardDocumentSummary[];
+  pagination: DocumentPaginationInfo;
+  isPaginationLoading?: boolean;
   renameDocumentId: string | null;
   renameValue: string;
   onRenameValueChange: (value: string) => void;
@@ -36,6 +43,7 @@ type OwnedDocumentsTableProps = {
   onRenameSave: (documentId: string) => void;
   onShareRequest: (document: DashboardDocumentSummary) => void;
   onDeleteConfirm: (documentId: string) => void;
+  onPageChange: (page: number) => void;
   isDeletingId: string | null;
   isSavingTitleId: string | null;
 };
@@ -49,6 +57,8 @@ const formatter = new Intl.DateTimeFormat("en", {
 
 export function OwnedDocumentsTable({
   documents,
+  pagination,
+  isPaginationLoading = false,
   renameDocumentId,
   renameValue,
   onRenameValueChange,
@@ -57,6 +67,7 @@ export function OwnedDocumentsTable({
   onRenameSave,
   onShareRequest,
   onDeleteConfirm,
+  onPageChange,
   isDeletingId,
   isSavingTitleId,
 }: OwnedDocumentsTableProps) {
@@ -67,29 +78,27 @@ export function OwnedDocumentsTable({
     <>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left">
-        <thead className="border-b border-border/70">
-          <tr className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-            <th className="px-6 py-4 font-medium">Document</th>
-            <th className="px-6 py-4 font-medium">Updated</th>
-            <th className="px-6 py-4 font-medium">Version</th>
-            <th className="px-6 py-4 font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {documents.map((document) => {
-            const isRenaming = renameDocumentId === document.id;
-            const isDeleting = isDeletingId === document.id;
-            const isSavingTitle = isSavingTitleId === document.id;
+          <thead className="border-b border-border/70">
+            <tr className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              <th className="px-6 py-4 font-medium">Document</th>
+              <th className="px-6 py-4 font-medium">Updated</th>
+              <th className="px-6 py-4 font-medium">Version</th>
+              <th className="px-6 py-4 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {documents.map((document) => {
+              const isRenaming = renameDocumentId === document.id;
+              const isDeleting = isDeletingId === document.id;
+              const isSavingTitle = isSavingTitleId === document.id;
 
-            return (
-              <tr
-                key={document.id}
-                data-document-id={document.id}
-                className="border-b border-border/60 align-top last:border-b-0"
-              >
-                <td className="px-6 py-5">
-                  <div className="space-y-3">
-                    <Badge variant="outline">Owned</Badge>
+              return (
+                <tr
+                  key={document.id}
+                  data-document-id={document.id}
+                  className="border-b border-border/60 align-top last:border-b-0"
+                >
+                  <td className="px-6 py-5">
                     {isRenaming ? (
                       <div className="max-w-md space-y-2">
                         <label
@@ -101,51 +110,38 @@ export function OwnedDocumentsTable({
                         <Input
                           id={`rename-${document.id}`}
                           value={renameValue}
-                          onChange={(event) =>
-                            onRenameValueChange(event.target.value)
-                          }
+                          onChange={(event) => onRenameValueChange(event.target.value)}
                         />
                       </div>
                     ) : (
                       <Link
                         href={`/documents/${document.id}`}
-                        className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="block rounded-lg text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       >
-                        <span className="block text-base font-semibold text-foreground">
-                          {document.title}
-                        </span>
+                        {document.title}
                       </Link>
                     )}
-                    <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                      {document.excerpt || "This document is ready for its first edit."}
-                    </p>
-                  </div>
-                </td>
-                <td className="px-6 py-5 text-sm text-muted-foreground">
-                  {formatter.format(new Date(document.updatedAt))}
-                </td>
-                <td className="px-6 py-5">
-                  <Badge variant="secondary">v{document.version}</Badge>
-                </td>
-                <td className="px-6 py-5">
-                  <div className="flex flex-wrap gap-2">
+                  </td>
+                  <td className="px-6 py-5 text-sm text-muted-foreground">
+                    {formatter.format(new Date(document.updatedAt))}
+                  </td>
+                  <td className="px-6 py-5">
+                    <Badge variant="secondary">v{document.version}</Badge>
+                  </td>
+                  <td className="px-6 py-5">
                     {isRenaming ? (
-                      <>
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           size="sm"
                           disabled={isSavingTitle}
                           onClick={() => onRenameSave(document.id)}
                         >
-                          {isSavingTitle ? "Saving..." : "Save title"}
+                          {isSavingTitle ? "Saving..." : "Save"}
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={onRenameCancel}
-                        >
+                        <Button size="sm" variant="outline" onClick={onRenameCancel}>
                           Cancel
                         </Button>
-                      </>
+                      </div>
                     ) : (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -196,28 +192,29 @@ export function OwnedDocumentsTable({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
         </table>
       </div>
+
+      <DocumentPaginationControls
+        pagination={pagination}
+        isLoading={isPaginationLoading}
+        onPageChange={onPageChange}
+      />
 
       <AlertDialog
         open={pendingDeleteDocument !== null}
         onOpenChange={(open) => {
-          if (!open) {
-            setPendingDeleteDocument(null);
-          }
+          if (!open) setPendingDeleteDocument(null);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete {pendingDeleteDocument?.title}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Delete {pendingDeleteDocument?.title}?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the document from your owned list.
             </AlertDialogDescription>
@@ -225,18 +222,12 @@ export function OwnedDocumentsTable({
           <AlertDialogFooter>
             <AlertDialogCancel>Keep document</AlertDialogCancel>
             <AlertDialogAction
-              disabled={
-                pendingDeleteDocument?.id === isDeletingId
-              }
+              disabled={pendingDeleteDocument?.id === isDeletingId}
               onClick={() => {
-                if (pendingDeleteDocument) {
-                  onDeleteConfirm(pendingDeleteDocument.id);
-                }
+                if (pendingDeleteDocument) onDeleteConfirm(pendingDeleteDocument.id);
               }}
             >
-              {pendingDeleteDocument?.id === isDeletingId
-                ? "Deleting..."
-                : "Confirm delete"}
+              {pendingDeleteDocument?.id === isDeletingId ? "Deleting..." : "Confirm delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

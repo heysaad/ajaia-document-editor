@@ -4,7 +4,6 @@ import { useState } from "react";
 import { FileUp, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,29 +12,63 @@ import { DocumentShareDialog } from "@/features/document-sharing/components/docu
 import { fetchJson } from "@/lib/api-client";
 
 import { DocumentEmptyState } from "./document-empty-state";
+import { DocumentsErrorState } from "./documents-error-state";
 import { OwnedDocumentsTable } from "./owned-documents-table";
 import { SharedDocumentsTable } from "./shared-documents-table";
 import type {
   DashboardDocumentSummary,
   DocumentDashboardData,
+  DocumentPaginationInfo,
   DocumentDetail,
+  DashboardDocumentListResult,
 } from "../models";
+import { DOCUMENT_LIST_PAGE_LIMIT } from "../server/document-constants";
 
 type DocumentDashboardProps = {
   initialData?: Partial<DocumentDashboardData>;
 };
 
+function createDefaultPagination(): DocumentPaginationInfo {
+  return {
+    page: 1,
+    pageSize: DOCUMENT_LIST_PAGE_LIMIT,
+    totalItems: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  };
+}
+
+function normalizeList(
+  list?: Partial<DashboardDocumentListResult>,
+): DashboardDocumentListResult {
+  const pagination = list?.pagination ?? createDefaultPagination();
+
+  return {
+    items: list?.items ?? [],
+    pagination: {
+      page: pagination.page ?? 1,
+      pageSize: pagination.pageSize ?? DOCUMENT_LIST_PAGE_LIMIT,
+      totalItems: pagination.totalItems ?? 0,
+      totalPages: pagination.totalPages ?? 1,
+      hasNextPage: pagination.hasNextPage ?? false,
+      hasPreviousPage: pagination.hasPreviousPage ?? false,
+    },
+  };
+}
+
 export function DocumentDashboard({
   initialData,
 }: DocumentDashboardProps) {
   const router = useRouter();
-  const [ownedDocuments, setOwnedDocuments] = useState<DashboardDocumentSummary[]>(
-    initialData?.owned?.items ?? [],
-  );
-  const [sharedDocuments] = useState<DashboardDocumentSummary[]>(
-    initialData?.shared?.items ?? [],
-  );
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState<DocumentDashboardData>({
+    owned: normalizeList(initialData?.owned),
+    shared: normalizeList(initialData?.shared),
+  });
+  const [ownedErrorMessage, setOwnedErrorMessage] = useState<string | null>(null);
+  const [sharedErrorMessage, setSharedErrorMessage] = useState<string | null>(null);
+  const [isOwnedPageLoading, setIsOwnedPageLoading] = useState(false);
+  const [isSharedPageLoading, setIsSharedPageLoading] = useState(false);
   const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -45,8 +78,85 @@ export function DocumentDashboard({
   const [shareDialogDocument, setShareDialogDocument] =
     useState<DashboardDocumentSummary | null>(null);
 
+  async function reloadDashboard(target: "owned" | "shared") {
+    const pageSize =
+      dashboardData.owned.pagination.pageSize ??
+      dashboardData.shared.pagination.pageSize ??
+      DOCUMENT_LIST_PAGE_LIMIT;
+
+    if (target === "owned") {
+      setIsOwnedPageLoading(true);
+      setOwnedErrorMessage(null);
+    } else {
+      setIsSharedPageLoading(true);
+      setSharedErrorMessage(null);
+    }
+
+    try {
+      const nextData = await fetchJson<DocumentDashboardData>(
+        `/api/documents?ownedPage=${dashboardData.owned.pagination.page}&sharedPage=${dashboardData.shared.pagination.page}&pageSize=${pageSize}`,
+      );
+
+      setDashboardData(nextData);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not load documents.";
+
+      if (target === "owned") {
+        setOwnedErrorMessage(message);
+      } else {
+        setSharedErrorMessage(message);
+      }
+    } finally {
+      if (target === "owned") {
+        setIsOwnedPageLoading(false);
+      } else {
+        setIsSharedPageLoading(false);
+      }
+    }
+  }
+
+  async function handlePageChange(target: "owned" | "shared", page: number) {
+    const pageSize =
+      dashboardData.owned.pagination.pageSize ??
+      dashboardData.shared.pagination.pageSize ??
+      DOCUMENT_LIST_PAGE_LIMIT;
+
+    if (target === "owned") {
+      setIsOwnedPageLoading(true);
+      setOwnedErrorMessage(null);
+    } else {
+      setIsSharedPageLoading(true);
+      setSharedErrorMessage(null);
+    }
+
+    try {
+      const nextData = await fetchJson<DocumentDashboardData>(
+        `/api/documents?ownedPage=${target === "owned" ? page : dashboardData.owned.pagination.page}&sharedPage=${target === "shared" ? page : dashboardData.shared.pagination.page}&pageSize=${pageSize}`,
+      );
+
+      setDashboardData(nextData);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not load documents.";
+
+      if (target === "owned") {
+        setOwnedErrorMessage(message);
+      } else {
+        setSharedErrorMessage(message);
+      }
+    } finally {
+      if (target === "owned") {
+        setIsOwnedPageLoading(false);
+      } else {
+        setIsSharedPageLoading(false);
+      }
+    }
+  }
+
   async function handleCreateDocument() {
-    setErrorMessage(null);
+    setOwnedErrorMessage(null);
+    setSharedErrorMessage(null);
     setIsCreating(true);
 
     try {
@@ -58,7 +168,7 @@ export function DocumentDashboard({
 
       router.push(`/documents/${createdDocument.id}`);
     } catch (error) {
-      setErrorMessage(
+      setOwnedErrorMessage(
         error instanceof Error ? error.message : "Could not create the document.",
       );
     } finally {
@@ -67,28 +177,21 @@ export function DocumentDashboard({
   }
 
   async function handleRenameDocument(documentId: string) {
-    setErrorMessage(null);
+    setOwnedErrorMessage(null);
     setIsSavingTitleId(documentId);
 
     try {
-      const updatedDocument = await fetchJson<DocumentDetail>(
-        `/api/documents/${documentId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: renameValue }),
-        },
-      );
+      await fetchJson<DocumentDetail>(`/api/documents/${documentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: renameValue }),
+      });
 
-      setOwnedDocuments((current) =>
-        current.map((document) =>
-          document.id === documentId ? updatedDocument : document,
-        ),
-      );
       setRenameDocumentId(null);
       setRenameValue("");
+      await reloadDashboard("owned");
     } catch (error) {
-      setErrorMessage(
+      setOwnedErrorMessage(
         error instanceof Error ? error.message : "Could not rename the document.",
       );
     } finally {
@@ -97,7 +200,7 @@ export function DocumentDashboard({
   }
 
   async function handleDeleteDocument(documentId: string) {
-    setErrorMessage(null);
+    setOwnedErrorMessage(null);
     setIsDeletingId(documentId);
 
     try {
@@ -105,17 +208,18 @@ export function DocumentDashboard({
         method: "DELETE",
       });
 
-      setOwnedDocuments((current) =>
-        current.filter((document) => document.id !== documentId),
-      );
+      await reloadDashboard("owned");
     } catch (error) {
-      setErrorMessage(
+      setOwnedErrorMessage(
         error instanceof Error ? error.message : "Could not delete the document.",
       );
     } finally {
       setIsDeletingId(null);
     }
   }
+
+  const ownedDocuments = dashboardData.owned.items;
+  const sharedDocuments = dashboardData.shared.items;
 
   return (
     <main id="main-content" className="flex w-full flex-1 flex-col gap-6">
@@ -144,18 +248,19 @@ export function DocumentDashboard({
         </div>
       </section>
 
-      {errorMessage ? (
-        <Alert variant="destructive">
-          <AlertTitle>Action failed</AlertTitle>
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
-      ) : null}
-
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="text-2xl font-semibold text-foreground">Owned by me</h2>
-          <Badge variant="outline">{ownedDocuments.length} documents</Badge>
+          <Badge variant="outline">
+            {dashboardData.owned.pagination.totalItems} documents
+          </Badge>
         </div>
+
+        {ownedErrorMessage ? (
+          <DocumentsErrorState
+            onRetry={() => void reloadDashboard("owned")}
+          />
+        ) : null}
 
         <Card>
           <CardHeader className="border-b border-border/70 pb-4">
@@ -173,6 +278,8 @@ export function DocumentDashboard({
             ) : (
               <OwnedDocumentsTable
                 documents={ownedDocuments}
+                pagination={dashboardData.owned.pagination}
+                isPaginationLoading={isOwnedPageLoading}
                 renameDocumentId={renameDocumentId}
                 renameValue={renameValue}
                 onRenameValueChange={setRenameValue}
@@ -191,6 +298,7 @@ export function DocumentDashboard({
                 onDeleteConfirm={(documentId) =>
                   void handleDeleteDocument(documentId)
                 }
+                onPageChange={(page) => void handlePageChange("owned", page)}
                 isDeletingId={isDeletingId}
                 isSavingTitleId={isSavingTitleId}
               />
@@ -202,8 +310,16 @@ export function DocumentDashboard({
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="text-2xl font-semibold text-foreground">Shared with me</h2>
-          <Badge variant="outline">{sharedDocuments.length} documents</Badge>
+          <Badge variant="outline">
+            {dashboardData.shared.pagination.totalItems} documents
+          </Badge>
         </div>
+
+        {sharedErrorMessage ? (
+          <DocumentsErrorState
+            onRetry={() => void reloadDashboard("shared")}
+          />
+        ) : null}
 
         <Card>
           <CardHeader className="border-b border-border/70 pb-4">
@@ -221,7 +337,12 @@ export function DocumentDashboard({
                 </Card>
               </div>
             ) : (
-              <SharedDocumentsTable documents={sharedDocuments} />
+              <SharedDocumentsTable
+                documents={sharedDocuments}
+                pagination={dashboardData.shared.pagination}
+                isPaginationLoading={isSharedPageLoading}
+                onPageChange={(page) => void handlePageChange("shared", page)}
+              />
             )}
           </CardContent>
         </Card>

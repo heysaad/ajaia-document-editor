@@ -67,6 +67,19 @@ function toSummary(
   };
 }
 
+function toPagination(page: number, pageSize: number, totalItems: number) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  return {
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  };
+}
+
 function toDetail(
   document: DocumentRecord,
   accessState: Exclude<DocumentAccessState, "none">,
@@ -184,35 +197,34 @@ export class DocumentService implements IDocumentService {
     input: ListDashboardDocumentsInput,
   ): Promise<DocumentDashboardData> {
     const [ownedDocuments, sharedDocuments] = await Promise.all([
-      this.repository.listOwned({
+      this.repository.listOwnedPage({
         ownerId: input.viewerId,
-        cursor: input.ownedCursor,
-        limit: input.limit + 1,
+        page: input.ownedPage ?? 1,
+        pageSize: input.pageSize,
       }),
-      this.repository.listShared({
+      this.repository.listSharedPage({
         viewerId: input.viewerId,
-        cursor: input.sharedCursor,
-        limit: input.limit + 1,
+        page: input.sharedPage ?? 1,
+        pageSize: input.pageSize,
       }),
     ]);
 
-    const ownedHasMore = ownedDocuments.length > input.limit;
-    const ownedItems = ownedHasMore
-      ? ownedDocuments.slice(0, input.limit)
-      : ownedDocuments;
-    const sharedHasMore = sharedDocuments.length > input.limit;
-    const sharedItems = sharedHasMore
-      ? sharedDocuments.slice(0, input.limit)
-      : sharedDocuments;
-
     return {
       owned: {
-        items: ownedItems.map((document) => toSummary(document, "owner")),
-        nextCursor: ownedHasMore ? ownedItems.at(-1)?.id ?? null : null,
+        items: ownedDocuments.items.map((document) => toSummary(document, "owner")),
+        pagination: toPagination(
+          ownedDocuments.page,
+          ownedDocuments.pageSize,
+          ownedDocuments.totalItems,
+        ),
       },
       shared: {
-        items: sharedItems.map((document) => toSummary(document, "shared_editor")),
-        nextCursor: sharedHasMore ? sharedItems.at(-1)?.id ?? null : null,
+        items: sharedDocuments.items.map((document) => toSummary(document, "shared_editor")),
+        pagination: toPagination(
+          sharedDocuments.page,
+          sharedDocuments.pageSize,
+          sharedDocuments.totalItems,
+        ),
       },
     };
   }
