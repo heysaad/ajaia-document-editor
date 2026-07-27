@@ -5,7 +5,8 @@ PostgreSQL, Prisma, shadcn-style UI components, and Tiptap.
 
 ## What is included
 
-- Three seeded users with an HTTP-only session cookie.
+- Better Auth email/password registration, login, database sessions, and logout.
+- Three seeded reviewer accounts.
 - Server-enforced document ownership.
 - Create, list, reopen, rename, and delete workflows.
 - Rich-text paragraphs, headings, bold, italic, underline, and lists.
@@ -13,16 +14,12 @@ PostgreSQL, Prisma, shadcn-style UI components, and Tiptap.
 - Optimistic concurrency that prevents stale edits from overwriting newer data.
 - Downloadable local JSON when a conflict needs manual recovery.
 
-The selectable-user session is isolated behind replaceable identity interfaces,
-so a production authentication provider can replace it without changing
-document business rules.
-
 ## Local setup
 
 Requirements:
 
 - Node.js 20 or newer.
-- PostgreSQL 15 or newer.
+- Docker Desktop (recommended), or PostgreSQL 15 or newer.
 
 From this `src/` directory:
 
@@ -30,12 +27,24 @@ From this `src/` directory:
 npm install
 ```
 
-Copy `.env.example` to `.env` and replace `DATABASE_URL` with a connection
-string for an empty PostgreSQL database:
+Start the local PostgreSQL service and copy the matching environment file:
+
+```bash
+npm run infra:up
+```
+
+```powershell
+Copy-Item .env.example .env
+```
+
+On macOS or Linux, use `cp .env.example .env` instead. The default connection
+is:
 
 ```dotenv
-DATABASE_URL="postgresql://user:password@localhost:5432/ajai_docs?schema=public"
-SESSION_COOKIE_NAME="ajai_session"
+DATABASE_URL="postgresql://ajai:local_dev_password@localhost:5432/ajai_docs?schema=public"
+BETTER_AUTH_SECRET="replace-with-at-least-32-random-characters"
+BETTER_AUTH_URL="http://localhost:3000"
+DEMO_USER_PASSWORD="replace-with-a-strong-demo-password"
 ```
 
 Prepare the database and start the application:
@@ -47,8 +56,24 @@ npm run db:seed
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), select an account, and
-create a document. The seed command is idempotent and can be run repeatedly.
+Open [http://localhost:3000](http://localhost:3000) and sign in or create an
+account. The seed command is idempotent and can be run repeatedly. It creates:
+
+- `maya@example.com`
+- `jordan@example.com`
+- `avery@example.com`
+
+All three use the `DEMO_USER_PASSWORD` value from `.env`.
+
+The initial migration includes the complete Better Auth schema and intentionally
+does not support upgrading the earlier demo-cookie database. If that schema was
+already applied, recreate the local database before running `db:migrate`.
+
+The PostgreSQL data is stored in the named Docker volume
+`ajai-docs_postgres-data`, so `npm run infra:down` stops the service without
+deleting local data. Use `npm run infra:logs` to follow database logs. To use an
+existing PostgreSQL installation instead, skip `infra:up` and set
+`DATABASE_URL` in `.env` to that database.
 
 ## Architecture
 
@@ -56,9 +81,10 @@ Application code is grouped by feature. Document rules are independent of
 Next.js and Prisma:
 
 - `DocumentService` depends on `IDocumentRepository`.
-- `IdentityService` depends on session-store and user-lookup interfaces.
-- Prisma and Next.js cookies are production adapters composed in server-only
-  modules.
+- Better Auth owns password hashing and session persistence through its Prisma
+  adapter.
+- Server components and route handlers resolve the Better Auth session through
+  one server-only helper.
 - Route handlers only parse HTTP input, resolve identity, call a service, and
   map errors.
 - Tiptap content validation and plain-text derivation are pure functions.
@@ -99,10 +125,11 @@ deletes it before finishing.
 
 The intended deployment is Vercel with Neon PostgreSQL:
 
-1. Create a Neon database and set `DATABASE_URL` in Vercel.
+1. Create a Neon database and set `DATABASE_URL`, `BETTER_AUTH_SECRET`,
+   `BETTER_AUTH_URL`, and `DEMO_USER_PASSWORD` in Vercel.
 2. Run `npm run db:migrate` and `npm run db:seed` against the production
    connection.
 3. Deploy the `src/` project with the standard `npm run build` command.
 
-File import, sharing, real authentication, automatic conflict merging, and
-real-time collaboration are intentionally deferred to later phases.
+File import, sharing, password recovery, email verification, OAuth, automatic
+conflict merging, and real-time collaboration are intentionally deferred.

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { identityService } from "@/features/auth/server/identity-service.server";
+import { resolveSessionUser } from "@/features/auth/server/auth-session";
 import {
   createDocumentSchema,
   listDocumentsSearchSchema,
@@ -11,7 +11,7 @@ import { handleRoute, parseJsonBody } from "@/infra/http/route";
 export const runtime = "nodejs";
 
 export const GET = handleRoute(async (request: NextRequest) => {
-  const viewer = await identityService.resolveViewerIdentity();
+  const viewer = await resolveSessionUser();
   const query = listDocumentsSearchSchema.parse({
     cursor: request.nextUrl.searchParams.get("cursor") ?? undefined,
     limit: request.nextUrl.searchParams.get("limit") ?? undefined,
@@ -27,7 +27,7 @@ export const GET = handleRoute(async (request: NextRequest) => {
 });
 
 export const POST = handleRoute(async (request: Request) => {
-  const viewer = await identityService.resolveViewerIdentity();
+  const viewer = await resolveSessionUser();
   const body = await parseJsonBody(request, createDocumentSchema);
   const document = await documentService.createDocument({
     ownerId: viewer.id,

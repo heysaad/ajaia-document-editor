@@ -28,7 +28,7 @@ async function getOwnedDocument(ownerId: string, documentId: string) {
 
 export default async function DocumentPage({ params }: DocumentPageProps) {
   const viewer = await getOptionalSessionUser();
-  if (!viewer) redirect("/");
+  if (!viewer) redirect("/login");
 
   const { documentId } = await params;
   const document = await getOwnedDocument(viewer.id, documentId);

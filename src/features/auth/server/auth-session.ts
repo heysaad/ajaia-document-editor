@@ -1,24 +1,32 @@
 import "server-only";
 
+import { headers } from "next/headers";
+
 import type { SessionUser } from "@/features/auth/models";
-import { identityService } from "@/features/auth/server/identity-service.server";
-import { SEEDED_USERS } from "@/features/auth/server/seeded-users";
-import { ValidationError } from "@/lib/application-errors";
+import { auth } from "@/features/auth/server/auth.server";
+import { UnauthorizedError } from "@/lib/application-errors";
 
 export async function resolveSessionUser(): Promise<SessionUser> {
-  return identityService.resolveViewerIdentity();
-}
-
-export async function getOptionalSessionUser(): Promise<SessionUser | null> {
-  return identityService.resolveOptionalViewerIdentity();
-}
-
-export function validateSessionUserId(userId: string) {
-  const user = SEEDED_USERS.find((candidate) => candidate.id === userId);
-
+  const user = await getOptionalSessionUser();
   if (!user) {
-    throw new ValidationError("Unknown user selection.");
+    throw new UnauthorizedError();
   }
 
   return user;
+}
+
+export async function getOptionalSessionUser(): Promise<SessionUser | null> {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    return null;
+  }
+
+  return {
+    id: session.user.id,
+    name: session.user.name,
+    email: session.user.email,
+  };
 }

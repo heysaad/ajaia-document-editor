@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { identityService } from "@/features/auth/server/identity-service.server";
+import { resolveSessionUser } from "@/features/auth/server/auth-session";
 import {
   documentIdParamSchema,
   updateDocumentContentSchema,
@@ -17,7 +17,7 @@ export const PUT = handleRoute(async (
   request: Request,
   context: DocumentContentRouteContext,
 ) => {
-  const viewer = await identityService.resolveViewerIdentity();
+  const viewer = await resolveSessionUser();
   const params = documentIdParamSchema.parse(await context.params);
   const body = await parseJsonBody(request, updateDocumentContentSchema);
   const document = await documentService.updateDocumentContent({

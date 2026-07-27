@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { UserSwitcher } from "@/features/auth/components/user-switcher";
+import { AccountCard } from "@/features/auth/components/account-card";
 import { fetchJson } from "@/lib/api-client";
 
 import { DocumentCard } from "./document-card";
@@ -28,20 +28,12 @@ type Viewer = {
   email: string;
 };
 
-type UserOption = {
-  id: string;
-  name: string;
-  email: string;
-};
-
 type DocumentDashboardProps = {
-  users: UserOption[];
-  viewer: Viewer | null;
+  viewer: Viewer;
   initialDocuments: DocumentSummary[];
 };
 
 export function DocumentDashboard({
-  users,
   viewer,
   initialDocuments,
 }: DocumentDashboardProps) {
@@ -149,7 +141,7 @@ export function DocumentDashboard({
               </div>
               <Button
                 size="lg"
-                disabled={!viewer || isCreating}
+                disabled={isCreating}
                 onClick={() => void handleCreateDocument()}
               >
                 <Plus aria-hidden="true" />
@@ -173,20 +165,13 @@ export function DocumentDashboard({
             <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
               <p className="text-sm text-muted-foreground">Current account</p>
               <p className="mt-2 text-lg font-semibold text-foreground">
-                {viewer ? viewer.name : "Choose an account"}
+                {viewer.name}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <UserSwitcher
-          users={users}
-          selectedUserId={viewer?.id ?? null}
-          onUserChanged={() => {
-            setRenameDocumentId(null);
-            setPendingDeleteId(null);
-          }}
-        />
+        <AccountCard name={viewer.name} email={viewer.email} />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.7fr_0.9fr]">
@@ -210,14 +195,7 @@ export function DocumentDashboard({
             </Alert>
           ) : null}
 
-          {!viewer ? (
-            <Card>
-              <CardContent className="p-6 text-sm leading-6 text-muted-foreground">
-                Select an account to load its persisted
-                documents and enable create, rename, delete, and editor actions.
-              </CardContent>
-            </Card>
-          ) : documents.length === 0 ? (
+          {documents.length === 0 ? (
             <DocumentEmptyState
               isCreating={isCreating}
               onCreate={() => void handleCreateDocument()}
@@ -275,8 +253,7 @@ export function DocumentDashboard({
                 Separate workspaces
               </div>
               <p className="mt-2">
-                Switch accounts to access each person&apos;s independent
-                document library.
+                Your signed-in account has its own private document library.
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/85 p-4">

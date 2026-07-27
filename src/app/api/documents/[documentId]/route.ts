@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { identityService } from "@/features/auth/server/identity-service.server";
+import { resolveSessionUser } from "@/features/auth/server/auth-session";
 import {
   documentIdParamSchema,
   renameDocumentSchema,
@@ -17,7 +17,7 @@ export const GET = handleRoute(async (
   _request: Request,
   context: DocumentRouteContext,
 ) => {
-  const viewer = await identityService.resolveViewerIdentity();
+  const viewer = await resolveSessionUser();
   const params = documentIdParamSchema.parse(await context.params);
   const document = await documentService.getOwnedDocument({
     ownerId: viewer.id,
@@ -31,7 +31,7 @@ export const PATCH = handleRoute(async (
   request: Request,
   context: DocumentRouteContext,
 ) => {
-  const viewer = await identityService.resolveViewerIdentity();
+  const viewer = await resolveSessionUser();
   const params = documentIdParamSchema.parse(await context.params);
   const body = await parseJsonBody(request, renameDocumentSchema);
   const document = await documentService.renameDocument({
@@ -47,7 +47,7 @@ export const DELETE = handleRoute(async (
   _request: Request,
   context: DocumentRouteContext,
 ) => {
-  const viewer = await identityService.resolveViewerIdentity();
+  const viewer = await resolveSessionUser();
   const params = documentIdParamSchema.parse(await context.params);
   await documentService.deleteDocument({
     ownerId: viewer.id,

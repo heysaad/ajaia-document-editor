@@ -12,6 +12,9 @@
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
     "test:e2e": "playwright test",
+    "infra:up": "docker compose -f ../compose.yaml up -d --wait",
+    "infra:down": "docker compose -f ../compose.yaml down",
+    "infra:logs": "docker compose -f ../compose.yaml logs -f postgres",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts"
@@ -41,6 +44,7 @@
     "@tiptap/extension-text": "^3.29.1",
     "@tiptap/extension-underline": "^3.29.1",
     "@tiptap/react": "^3.29.1",
+    "better-auth": "1.6.25",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",

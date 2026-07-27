@@ -4,15 +4,22 @@ test("creates, formats, reopens, renames, and deletes a document", async ({
   page,
 }) => {
   await page.goto("/");
+  await expect(page).toHaveURL("/login");
+  await page.getByLabel("Email").fill("maya@example.com");
   await page
-    .getByRole("button", { name: "Maya Patel maya@example.com" })
-    .click();
+    .getByLabel("Password")
+    .fill(process.env.DEMO_USER_PASSWORD ?? "demo-password-1234");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL("/", { timeout: 30_000 });
+
   const createButton = page
     .getByRole("button", { name: "Create untitled document" })
     .first();
   await expect(createButton).toBeEnabled();
   await createButton.click();
-  await expect(page).toHaveURL(/\/documents\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/documents\/[0-9a-f-]+$/, {
+    timeout: 30_000,
+  });
   const documentId = page.url().split("/").at(-1)!;
 
   await page.getByRole("textbox", { name: "Document title" }).fill(
@@ -48,4 +55,18 @@ test("creates, formats, reopens, renames, and deletes a document", async ({
   await card.getByRole("button", { name: "Delete" }).click();
   await card.getByRole("button", { name: "Confirm delete" }).click();
   await expect(card).toHaveCount(0);
+});
+
+test("rejects invalid credentials without exposing account details", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("unknown@example.com");
+  await page.getByLabel("Password").fill("wrong-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(
+    page.getByText("The email or password is incorrect."),
+  ).toBeVisible();
+  await expect(page).toHaveURL("/login");
 });
